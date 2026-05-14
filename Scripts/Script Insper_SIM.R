@@ -15,8 +15,8 @@ library(stringr)
 library(readr) 
 
 # 2) Parametros e Diretorios ---------------------------------------------------
-dir_dados <- "G:/Meu Drive/INSPER/Trabalho/SIM/Dados"
-dir_analises <- "G:/Meu Drive/INSPER/Trabalho/SIM/Análises"
+dir_dados <- "xx"
+dir_analises <- "xx"
 
 dir_geral <- file.path(dir_analises, "Geral_Menor_18")
 dir_0_a_6 <- file.path(dir_analises, "Subpop_0_6_Anos")
