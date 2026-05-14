@@ -21,8 +21,8 @@ library(scales)
 library(forcats)
 
 # 2) Parâmetros e Diretórios ---------------------------------------------------
-dir_dados    <- "G:/Meu Drive/INSPER/Trabalho/SIM/Dados"
-dir_analises <- "G:/Meu Drive/INSPER/Trabalho/SIM/Análises/Subpop_0_6_Anos"
+dir_dados    <- "xx"
+dir_analises <- "xx"
 
 if (!dir.exists(dir_analises)) dir.create(dir_analises, recursive = TRUE)
 
