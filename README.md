@@ -38,6 +38,8 @@ As taxas são expressas por **1.000 nascidos vivos**, permitindo comparações p
 * **SINASC** — Sistema de Informações sobre Nascidos Vivos;
 * **Extração e processamento:** DataSUS, TabNet e rotinas em R.
 
+Para a leitura de **polos de referência**, os diagnósticos são segmentados em grupos de alta complexidade (oncologia, cardiopatias congênitas, malformações, doenças do sistema nervoso e metabólicas/genéticas). As **afecções perinatais** são analisadas em separado, pois parte do evento perinatal recebido nos polos reflete o **local de parto** (gestação de risco referenciada à maternidade da capital) e não o deslocamento da criança em busca de tratamento. Define-se assim o conceito de **referência terapêutica** (alta complexidade *sem* perinatal), que é o fluxo "limpo" para identificar centros de referência e vazios assistenciais.
+
 ---
 
 ## 📁 Scripts do Projeto
@@ -144,12 +146,37 @@ A análise de fluxo cruza o **município de residência** da criança com o **mu
 
 ---
 
+## 3B. Segmentação Diagnóstica e Polos de Referência (Mortalidade)
+
+Refinamento da análise de fluxo. As causas são segmentadas em grupos diagnósticos de **alta complexidade** (marcadores de centros de referência) e cruzadas com as faixas etárias e com a origem dos pacientes em nível de **CEP/município**. As afecções perinatais aparecem destacadas dos demais grupos, e o fluxo de **referência terapêutica** (alta complexidade sem perinatal) é usado para revelar a vocação de cada polo e os deslocamentos efetivos por tratamento.
+
+### Segmentação Diagnóstica nos Polos, por Faixa Etária
+
+<div align="center">
+  <img src="outputs/SIM/Fig11_CID_Segmentado_por_Faixa_Polos.png" width="850">
+</div>
+
+### Polos por Especialidade — Fluxo de Referência Terapêutica
+
+<div align="center">
+  <img src="outputs/SIM/Fig13_Polos_por_Especialidade.png" width="850">
+</div>
+
+### Fluxo Origem → Polo por CEP/Município (Alta Complexidade)
+
+<div align="center">
+  <img src="outputs/SIM/Fig12_Fluxo_CEP_Origem_Destino_Polos.png" width="850">
+</div>
+
+---
+
 ## 📂 Tabelas Executivas — Mortalidade
 
 Os arquivos executivos com os resultados sumarizados da mortalidade estão disponíveis para download:
 
 * [Tabelas Executivas de Mortalidade](outputs/SIM/Tabelas_Executivas_Mortalidade_v2.xlsx)
 * [Tabelas dos Top 10 Municípios Receptores — SIM](outputs/SIM/Tabelas_Top10_Municipios_Receptores.xlsx)
+* [Segmentação de CID e Fluxo por CEP — SIM](outputs/SIM/Tabelas_CID_Segmentado_e_Fluxo_CEP.xlsx)
 
 ---
 
@@ -254,6 +281,8 @@ Os arquivos executivos com os resultados sumarizados das internações estão di
 * [Tabelas Executivas de Internações — 0 a 6 anos](outputs/SIH/Tabelas_Executivas_Internacoes_0_6_Anos.xlsx)
 * [Tabelas dos Top 10 Municípios Receptores — SIH](outputs/SIH/Tabelas_Top10_Municipios_Receptores_SIH.xlsx)
 
+> **Nota:** o módulo SIH também conta, no script de análises, com a segmentação de CID por faixa etária, o ranking de polos por especialidade e o fluxo origem → polo por **CEP de residência da AIH** (Fig12 a Fig14 e a planilha `Tabelas_CID_Segmentado_e_Fluxo_CEP_SIH.xlsx`). As figuras serão incorporadas a este README assim que publicadas em `outputs/SIH/`.
+
 ---
 
 # 📂 Estrutura do Repositório
@@ -280,8 +309,12 @@ sim-sih-mortalidade-internacoes-0-6-anos/
 │   │   ├── Fig08_Polos_Saude_Infantil_Top30.png
 │   │   ├── Fig09_Heatmap_Fluxo_InterUF.png
 │   │   ├── Fig10_Fluxos_Top10_Municipios_Receptores.png
+│   │   ├── Fig11_CID_Segmentado_por_Faixa_Polos.png
+│   │   ├── Fig12_Fluxo_CEP_Origem_Destino_Polos.png
+│   │   ├── Fig13_Polos_por_Especialidade.png
 │   │   ├── Tabelas_Executivas_Mortalidade_v2.xlsx
-│   │   └── Tabelas_Top10_Municipios_Receptores.xlsx
+│   │   ├── Tabelas_Top10_Municipios_Receptores.xlsx
+│   │   └── Tabelas_CID_Segmentado_e_Fluxo_CEP.xlsx
 │   │
 │   └── SIH/
 │       ├── Fig01_Evolucao_Faixa_Etaria_Absoluto.png
