@@ -274,14 +274,37 @@ Esta análise descreve os óbitos hospitalares registrados entre internações d
 
 ---
 
+## 7B. Segmentação Diagnóstica e Polos de Referência (Internações)
+
+Mesmo refinamento aplicado ao SIM, agora sobre as internações. Como o **CEP de residência** consta da AIH, o fluxo de origem é detalhado em nível de **área CEP** (5 dígitos), e não apenas por município. As afecções perinatais são analisadas em separado, e o fluxo de **referência terapêutica** (alta complexidade sem perinatal) revela a vocação de cada polo hospitalar.
+
+### Segmentação Diagnóstica nos Polos, por Faixa Etária
+
+<div align="center">
+  <img src="outputs/SIH/Fig12_CID_Segmentado_por_Faixa_Polos_SIH.png" width="850">
+</div>
+
+### Polos por Especialidade — Fluxo de Referência Terapêutica
+
+<div align="center">
+  <img src="outputs/SIH/Fig13_Polos_por_Especialidade_SIH.png" width="850">
+</div>
+
+### Fluxo Origem → Polo por CEP de Residência (Alta Complexidade)
+
+<div align="center">
+  <img src="outputs/SIH/Fig14_Fluxo_CEP_Origem_Destino_Polos_SIH.png" width="850">
+</div>
+
+---
+
 ## 📂 Tabelas Executivas — Internações
 
 Os arquivos executivos com os resultados sumarizados das internações estão disponíveis para download:
 
 * [Tabelas Executivas de Internações — 0 a 6 anos](outputs/SIH/Tabelas_Executivas_Internacoes_0_6_Anos.xlsx)
 * [Tabelas dos Top 10 Municípios Receptores — SIH](outputs/SIH/Tabelas_Top10_Municipios_Receptores_SIH.xlsx)
-
-> **Nota:** o módulo SIH também conta, no script de análises, com a segmentação de CID por faixa etária, o ranking de polos por especialidade e o fluxo origem → polo por **CEP de residência da AIH** (Fig12 a Fig14 e a planilha `Tabelas_CID_Segmentado_e_Fluxo_CEP_SIH.xlsx`). As figuras serão incorporadas a este README assim que publicadas em `outputs/SIH/`.
+* [Segmentação de CID e Fluxo por CEP — SIH](outputs/SIH/Tabelas_CID_Segmentado_e_Fluxo_CEP_SIH.xlsx)
 
 ---
 
@@ -328,8 +351,12 @@ sim-sih-mortalidade-internacoes-0-6-anos/
 │       ├── Fig09_Heatmap_Fluxo_InterUF.png
 │       ├── Fig10_Fluxos_Top10_Municipios_Receptores_SIH.png
 │       ├── Fig11_Obitos_Hospitalares_SIH.png
+│       ├── Fig12_CID_Segmentado_por_Faixa_Polos_SIH.png
+│       ├── Fig13_Polos_por_Especialidade_SIH.png
+│       ├── Fig14_Fluxo_CEP_Origem_Destino_Polos_SIH.png
 │       ├── Tabelas_Executivas_Internacoes_0_6_Anos.xlsx
-│       └── Tabelas_Top10_Municipios_Receptores_SIH.xlsx
+│       ├── Tabelas_Top10_Municipios_Receptores_SIH.xlsx
+│       └── Tabelas_CID_Segmentado_e_Fluxo_CEP_SIH.xlsx
 │
 ├── .gitignore
 ├── LICENSE
