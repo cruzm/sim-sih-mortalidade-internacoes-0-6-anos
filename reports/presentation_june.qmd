@@ -1,0 +1,77 @@
+---
+title: "Mortalidade e Internações na Primeira Infância"
+subtitle: "Evolução do Projeto"
+date: "Junho 2026"
+lang: pt-BR
+bibliography: references.bib
+cite-method: biblatex
+biblatexoptions:
+  - style=authoryear
+  - natbib=true
+format:
+  beamer:
+    theme: Madrid
+    colortheme: default
+    slide-level: 2
+---
+
+# Dados e abordagem
+
+## Dados
+
+**Fontes de dados:** [datasus_sim]
+
+- SIM — Sistema de Informações sobre Mortalidade
+- SIH/SUS — Sistema de Informações Hospitalares do SUS
+- SINASC — Sistema de Informações sobre Nascidos Vivos
+
+**Período:** 2015 a 2024
+
+## Abordagem
+
+**Faixas etárias:** [UNIGME2024], [brasil2026calendario], [francca2009mortalidade]
+- Visão geral: 
+    - Menos de 1 ano;
+    - De 1 ano até menos que cinco anos;
+    - 5 e 6 anos;
+
+-Visão detalhada:
+    - Neonatal:
+        - Neonatal precoce: 0–6 dias;
+        - Neonatal tardia: 7–27 dias;
+        - Pós-neonatal: 28 dias a \<1 ano;
+    - Crianças:
+        - 1 a \< 2 anos;
+        - 2 a \< 5 anos;
+        - 5 e 6 anos;
+
+**Unidade de medida das taxas:** As taxas são expressas por 1.000 nascidos vivos da SINASC
+
+# Evolução da Mortalidade e Causas
+
+## Evolução da Mortalidade na Primeira Infância
+
+- Fazer gráfico de taxa de mortalidade e mortalidade por milhares para menos que um ano, 1 a menos que 5 anos e 5 e 6 anos, como na visão geral; referência: https://data.unicef.org/resources/levels-and-trends-in-child-mortality-2024/
+
+## Evolução da Mortalidade para Neonatal
+
+- Fazer gráfico de taxa de mortalidade e mortalidade por milhares para neotanal por neonatal precoce, neonatal tardia, pós-neonatal
+
+## Evolução da Mortalidade para Crianças
+
+- Fazer gráfico de taxa de mortalidade e mortalidade por milhares para crianças: 1 a \< 2 anos, 2 a \< 5 anos e 5 e 6 anos
+
+## Evolução nas Causas de Mortalidade
+
+![Evolução das causas de mortalidade, 2015–2024](outputs/SIM/Fig02_Evolucao_Causas_Taxa.png){fig-align="center" width="850"}
+
+## Causas Prioritárias de Mortalidade por Faixa Etária
+
+![Causas prioritárias de mortalidade, 2015–2024](outputs/SIM/Fig03_Causas_Prioritarias_por_Faixa.png){fig-align="center" width="850"}
+
+
+# Evolução das Internações e Causas
+
+# Conclusão
+
+# Próximos Passos
