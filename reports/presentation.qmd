@@ -1,0 +1,228 @@
+---
+title: "Mortalidade e Internações na Primeira Infância"
+subtitle: "Evolução do Projeto"
+date: "Junho de 2026"
+lang: pt-BR
+bibliography: references.bib
+format:
+  beamer:
+    theme: Madrid
+    colortheme: default
+    slide-level: 2
+    keep-tex: true
+---
+
+## Dados e abordagem
+
+**Fontes de dados:** \
+
+- SIM — Sistema de Informações sobre Mortalidade\
+- SIH/SUS — Sistema de Informações Hospitalares do SUS\
+- SINASC — Sistema de Informações sobre Nascidos Vivos\
+
+**Período:** 2015 a 2024
+
+[@datasus_sim]
+
+## Dados e abordagem
+
+**Faixas etárias:** \
+
+- Visão geral: \
+    - Menos de 1 ano;\
+    - De 1 ano até menos que cinco anos;\
+    - 5 e 6 anos.\
+
+- Visão detalhada:\
+    - Neonatal:\
+        - Neonatal precoce: 0–6 dias;\
+        - Neonatal tardia: 7–27 dias;\
+        - Pós-neonatal: 28 dias a \<1 ano.\
+    - Crianças:\
+        - 1 a \< 2 anos;\
+        - 2 a \< 5 anos;\
+        - 5 e 6 anos.
+
+[@UNIGME2024], [@brasil2026calendario], [@francca2009mortalidade]
+
+## Dados e abordagem
+
+- **Unidade de medida das taxas:** as taxas são expressas por 1.000 nascidos vivos da SINASC\
+
+- **Polos de referência:** os diagnósticos são segmentados em grupos de alta complexidade:\
+
+    - Oncologia;\
+    - Cardiopatias congênitas;\
+    - Malformações;\
+    - Doenças do sistema nervoso, metabólicas ou genéticas.\
+
+- **Afecções perinatais** são analisadas em separado, pois parte do evento perinatal recebido nos polos reflete o local de parto e não o deslocamento da criança em busca de tratamento.\
+
+- **Referência terapêutica** de alta complexidade *sem* perinatal é o fluxo para identificar centros de referência e vazios assistenciais.\
+
+## Evolução da Mortalidade na Primeira Infância
+
+- Fazer gráfico de taxa de mortalidade e mortalidade por milhares para menos que um ano, 1 a menos que 5 anos e 5 e 6 anos, como na visão geral; referência: https://data.unicef.org/resources/levels-and-trends-in-child-mortality-2024/
+
+## Evolução da Mortalidade no Neonatal
+
+- Fazer gráfico de taxa de mortalidade e mortalidade por milhares para neotanal por neonatal precoce, neonatal tardia, pós-neonatal
+
+## Evolução da Mortalidade para Crianças
+
+- Fazer gráfico de taxa de mortalidade e mortalidade por milhares para crianças: 1 a \< 2 anos, 2 a \< 5 anos e 5 e 6 anos
+
+## Causas de Mortalidade
+
+![Evolução das causas de mortalidade, 2015–2024](../outputs/SIM/Fig02_Evolucao_Causas_Taxa.png){fig-align="center" width="90%"}
+
+## Causas de Mortalidade por Faixa Etária
+
+![Causas prioritárias de mortalidade, 2015–2024](../outputs/SIM/Fig03_Causas_Prioritarias_por_Faixa.png){fig-align="center" width="90%"}
+
+## Análise Espacial e Desigualdades Regionais da Mortalidade
+
+![Heterogeneidade Regional da Taxa de Mortalidade, 2015–2024](../outputs/SIM/Fig04_Heterogeneidade_Macro_Taxa.png){fig-align="center" width="90%"}
+
+## Análise Espacial e Desigualdades Regionais da Mortalidade
+
+![Distribuição Espacial da Taxa de Mortalidade por Macrorregião, 2015-2024](../outputs/SIM/Fig06_Mapa_Taxa_Macrorregiao.png){fig-align="center" width="60%"}
+
+
+## Análise Espacial e Desigualdades Regionais da Mortalidade
+
+![Distribuição Espacial da Taxa de Mortalidade por Estado, 2015-2024](../outputs/SIM/Fig05_Mapa_Taxa_Estado.png){fig-align="center" width="60%"}
+
+
+## Fluxos de Mortalidade e Polos de Ocorrência
+
+- A análise de fluxo cruza o **município de residência** da criança com o **município de ocorrência do óbito**, permitindo identificar deslocamentos assistenciais, dependência regional e concentração de óbitos em polos de saúde infantil.
+
+## Fluxos de Mortalidade e Polos de Ocorrência
+
+![Proporção de Óbitos Fora do Município de Residência, 2015-2024](../outputs/SIM/Fig07_Fluxo_Obitos_Fora_Municipio.png){fig-align="center" width="90%"}
+
+## Fluxos de Mortalidade e Polos de Ocorrência
+
+![Municípios Polo de Saúde Infantil, 2015-2024](../outputs/SIM/Fig08_Polos_Saude_Infantil_Top30.png){fig-align="center" width="80%"}
+
+
+## Fluxos de Mortalidade e Polos de Ocorrência
+
+![Fluxo de Mortalidade Infantil entre Estados, 2015-2024](../outputs/SIM/Fig09_Heatmap_Fluxo_InterUF.png){fig-align="center" width="75%"}
+
+
+## Fluxos de Mortalidade e Polos de Ocorrência
+
+![Principais Fluxos para Municípios Mais Receptores de Óbitos, 2015-2024](../outputs/SIM/Fig10_Fluxos_Top10_Municipios_Receptores.png){fig-align="center" width="80%"}
+
+
+## Segmentação Diagnóstica e Polos de Referência
+
+- As causas são segmentadas em grupos diagnósticos de **alta complexidade** e cruzadas com as faixas etárias e com a origem dos pacientes em nível de **município**.\
+
+- As afecções perinatais aparecem destacadas dos demais grupos, e o fluxo de **referência terapêutica** (alta complexidade sem perinatal) é usado para revelar a vocação de cada polo e os deslocamentos efetivos por tratamento.
+
+## Segmentação Diagnóstica nos Polos
+
+![Segmentação Diagnóstica nos Polos, por Faixa Etária, 2015-2024](../outputs/SIM/Fig11_CID_Segmentado_por_Faixa_Polos.png){fig-align="center" width="90%"}
+
+## Polos por Especialidade
+
+![Polos por Especialidade — Fluxo de Referência Terapêutica, 2015-2024](../outputs/SIM/Fig13_Polos_por_Especialidade.png){fig-align="center" width="60%"}
+
+
+## Fluxo Origem ao Polo
+
+![Fluxo Origem ao Polo por Município para Alta Complexidade, 2015-2024](../outputs/SIM/Fig12_Fluxo_CEP_Origem_Destino_Polos.png){fig-align="center" width="70%"}
+
+
+## Evolução de Internações na Primeira Infância
+
+- Fazer gráfico de taxa de internação e internação por milhares para menos que um ano, 1 a menos que 5 anos e 5 e 6 anos, como na visão geral; referência: https://data.unicef.org/resources/levels-and-trends-in-child-mortality-2024/
+
+## Evolução de Internações para Neonatal
+
+- Fazer gráfico de taxa de internação e internação por milhares para neotanal por neonatal precoce, neonatal tardia, pós-neonatal
+
+## Evolução da Internações para Crianças
+
+- Fazer gráfico de taxa de internação e internação por milhares para crianças: 1 a \< 2 anos, 2 a \< 5 anos e 5 e 6 anos
+
+## Evolução das Causas de Internação
+
+![Evolução das Causas de Internação: Taxa por 1.000 Nascidos Vivos, 2015-2024](../outputs/SIH/Fig02_Evolucao_Causas_Taxa.png){fig-align="center" width="90%"}
+
+## Causas Prioritárias de Internação por Faixa Etária
+
+![Causas Prioritárias de Internação por Faixa Etária, 2015-2024](../outputs/SIH/Fig03_Causas_Prioritarias_por_Faixa.png){fig-align="center" width="90%"}
+
+## Análise Espacial e Desigualdades Regionais nas Internações
+
+![Heterogeneidade Regional da Taxa de Internação, 2015-2024](../outputs/SIH/Fig04_Heterogeneidade_Macro_Taxa.png){fig-align="center" width="90%"}
+
+## Análise Espacial e Desigualdades Regionais nas Internações
+
+![Distribuição Espacial da Taxa de Internação por Macrorregião, 2015-2024](../outputs/SIH/Fig06_Mapa_Taxa_Macrorregiao.png){fig-align="center" width="60%"}
+
+## Análise Espacial e Desigualdades Regionais nas Internações
+
+![Distribuição Espacial da Taxa de Internação por Estado, 2015-2024](../outputs/SIH/Fig05_Mapa_Taxa_Estado.png){fig-align="center" width="60%"}
+
+
+## Fluxos Assistenciais e Polos de Atendimento Infantil
+
+- A análise de fluxo das internações cruza o **município de residência** da criança com o **município de internação**, permitindo identificar deslocamentos assistenciais, concentração de atendimentos em polos regionais e dependência de municípios receptores para o cuidado hospitalar infantil.
+
+## Fluxos Assistenciais e Polos de Atendimento Infantil
+
+![Proporção de Internações Fora do Município de Residência, 2015-2024](../outputs/SIH/Fig07_Fluxo_Internacoes_Fora_Municipio.png){fig-align="center" width="60%"}
+
+
+## Fluxos Assistenciais e Polos de Atendimento Infantil
+
+![Municípios Polo de Saúde Infantil, 2015-2024](../outputs/SIH/Fig08_Polos_Saude_Infantil_Top30.png){fig-align="center" width="60%"}
+
+
+## Fluxos Assistenciais e Polos de Atendimento Infantil
+
+![Fluxo de Mortalidade Infantil entre Estados, 2015-2024](../outputs/SIH/Fig09_Heatmap_Fluxo_InterUF.png){fig-align="center" width="70%"}
+
+
+## Fluxos Assistenciais e Polos de Atendimento Infantil
+
+![Principais Fluxos para Municípios Mais Receptores de Internações, 2015-2024](../outputs/SIH/Fig10_Fluxos_Top10_Municipios_Receptores_SIH.png){fig-align="center" width="90%"}
+
+## Óbitos Hospitalares entre Internações
+
+ - Esta análise descreve os óbitos hospitalares registrados entre internações de crianças de 0 a 6 anos, permitindo avaliar a magnitude absoluta dos óbitos em ambiente hospitalar e a letalidade hospitalar ao longo do período.
+
+## Óbitos Hospitalares e Letalidade Hospitalar
+
+![Óbitos Hospitalares e Letalidade Hospitalar, 2015-2024](../outputs/SIH/Fig11_Obitos_Hospitalares_SIH.png){fig-align="center" width="60%"}
+
+
+## Segmentação Diagnóstica e Polos de Referência
+
+- Como o **CEP de residência** consta da AIH, o fluxo de origem é detalhado em nível de **área CEP**, e não apenas por município.\
+
+- As afecções perinatais são analisadas em separado, e o fluxo de **referência terapêutica** (alta complexidade sem perinatal) revela a vocação de cada polo hospitalar.
+
+## Segmentação Diagnóstica nos Polos
+
+
+![Segmentação Diagnóstica nos Polos, por Faixa Etária](../outputs/SIH/Fig12_CID_Segmentado_por_Faixa_Polos_SIH.png){fig-align="center" width="90%"}
+
+## Polos por Especialidade
+
+![Polos por Especialidade — Fluxo de Referência Terapêutica](../outputs/SIH/Fig13_Polos_por_Especialidade_SIH.png){fig-align="center" width="60%"}
+
+## Fluxo Origem ao Polo por CEP de Residência
+
+![Fluxo Origem ao Polo por CEP de Residência para Alta Complexidade](../outputs/SIH/Fig14_Fluxo_CEP_Origem_Destino_Polos_SIH.png){fig-align="center" width="60%"}
+
+## Conclusão
+
+## Próximos Passos
+
+## Referências
