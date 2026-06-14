@@ -13,12 +13,87 @@ library(ggplot2)
 library(readr)
 library(writexl)
 library(tidyr)
-library(geobr)
+# library(geobr)  # nao mais necessario: malhas vem de GeoJSON/CSV (ver utilitarios de malha)
 library(sf)
 library(RColorBrewer)
 library(stringr)
 library(scales)
 library(forcats)
+
+# ==============================================================================
+# UTILITÁRIOS DE MALHA (sem geobr)
+#   O pacote geobr 1.9.x apresenta o bug de leitura "File cached locally seems
+#   to be corrupted" (endianness, issue ipeaGIT/geobr#368). Para tornar os
+#   mapas reprodutíveis e offline, a malha de UF é lida de um GeoJSON oficial
+#   (códigos IBGE) e os centroides municipais de um CSV com lat/long. Ambos são
+#   baixados uma única vez e cacheados localmente em dir_dados (.geojson/.csv).
+# ==============================================================================
+
+.baixar_se_preciso <- function(url, destino) {
+  if (!file.exists(destino) || file.info(destino)$size < 1000) {
+    options(timeout = max(600, getOption("timeout", 60)))
+    utils::download.file(url, destino, mode = "wb", quiet = TRUE)
+  }
+  destino
+}
+
+# Malha estadual (27 UFs) -> objeto sf com coluna numérica code_state ----------
+ler_malha_uf <- function() {
+  base_cache <- if (exists("dir_dados") && dir.exists(dir_dados)) dir_dados else tempdir()
+  rds_path   <- file.path(base_cache, "malha_uf_brasil.rds")
+  if (file.exists(rds_path)) {
+    obj <- tryCatch(readRDS(rds_path), error = function(e) NULL)
+    if (!is.null(obj) && inherits(obj, "sf") && nrow(obj) == 27) return(obj)
+  }
+  url <- paste0("https://raw.githubusercontent.com/codeforgermany/",
+                "click_that_hood/main/public/data/brazil-states.geojson")
+  geojson <- .baixar_se_preciso(url, file.path(base_cache, "brazil-states.geojson"))
+  malha <- sf::st_read(geojson, quiet = TRUE)
+  malha$code_state <- as.numeric(malha$codigo_ibg)
+  malha <- malha[!is.na(malha$code_state), ]
+  malha <- sf::st_make_valid(malha)
+  tryCatch(saveRDS(malha, rds_path), error = function(e) NULL)
+  malha
+}
+
+# Centroides municipais -> data.frame cod_mun_6 / lon / lat --------------------
+ler_centroides_municipios <- function() {
+  base_cache <- if (exists("dir_dados") && dir.exists(dir_dados)) dir_dados else tempdir()
+  url <- paste0("https://raw.githubusercontent.com/kelvins/",
+                "municipios-brasileiros/main/csv/municipios.csv")
+  csv <- .baixar_se_preciso(url, file.path(base_cache, "municipios_centroides.csv"))
+  m <- utils::read.csv(csv, stringsAsFactors = FALSE, encoding = "UTF-8")
+  data.frame(
+    cod_mun_6 = substr(as.character(m$codigo_ibge), 1, 6),
+    lon       = as.numeric(m$longitude),
+    lat       = as.numeric(m$latitude),
+    stringsAsFactors = FALSE
+  )
+}
+
+# Lookup município (código -> nome/UF), substitui geobr::lookup_muni -----------
+#   Devolve as mesmas colunas usadas no restante do script: code_muni,
+#   name_muni, abbrev_state. Fonte: mesmo CSV de municípios (kelvins).
+ler_lookup_municipios <- function() {
+  base_cache <- if (exists("dir_dados") && dir.exists(dir_dados)) dir_dados else tempdir()
+  url <- paste0("https://raw.githubusercontent.com/kelvins/",
+                "municipios-brasileiros/main/csv/municipios.csv")
+  csv <- .baixar_se_preciso(url, file.path(base_cache, "municipios_centroides.csv"))
+  m <- utils::read.csv(csv, stringsAsFactors = FALSE, encoding = "UTF-8")
+  uf_sigla <- c(
+    "11"="RO","12"="AC","13"="AM","14"="RR","15"="PA","16"="AP","17"="TO",
+    "21"="MA","22"="PI","23"="CE","24"="RN","25"="PB","26"="PE","27"="AL",
+    "28"="SE","29"="BA","31"="MG","32"="ES","33"="RJ","35"="SP","41"="PR",
+    "42"="SC","43"="RS","50"="MS","51"="MT","52"="GO","53"="DF"
+  )
+  data.frame(
+    code_muni    = as.character(m$codigo_ibge),
+    name_muni    = as.character(m$nome),
+    abbrev_state = unname(uf_sigla[sprintf("%02d", as.integer(m$codigo_uf))]),
+    stringsAsFactors = FALSE
+  )
+}
+
 
 # 2) Parâmetros e Diretórios ---------------------------------------------------
 dir_dados    <- "G:/Meu Drive/INSPER/Trabalho/SIM/Dados"
@@ -228,6 +303,102 @@ g1 <- ggplot(evolucao_etaria, aes(x = ANO_OBITO, y = n, color = GRUPO_ETARIO, gr
 
 ggsave(file.path(dir_analises, "Fig01_Evolucao_Faixa_Etaria_Absoluto.png"), g1, width = 10, height = 6, dpi = 300)
 
+# ==============================================================================
+# 6B) EVOLUÇÃO POR SUB-FAIXA — VISÃO GERAL, NEONATAL E CRIANÇAS
+#     Slides "Evolução da Mortalidade": para cada visão são gerados dois
+#     gráficos — taxa por 1.000 nascidos vivos e número absoluto de óbitos.
+#     A reclassificação fina reaproveita UNIDADE_IDADE/VALOR_IDADE já criadas
+#     em base_analise, sem alterar a variável GRUPO_ETARIO original.
+# ==============================================================================
+cat("  Fig01a/b/c: Evolução por sub-faixa (visão geral / neonatal / crianças)...\n")
+
+base_faixas_fina <- base_analise %>%
+  mutate(
+    FX_VISAO_GERAL = case_when(
+      UNIDADE_IDADE %in% c("0", "1", "2", "3")                   ~ "Menor de 1 ano",
+      UNIDADE_IDADE == "4" & VALOR_IDADE >= 1 & VALOR_IDADE < 5  ~ "1 a < 5 anos",
+      UNIDADE_IDADE == "4" & VALOR_IDADE >= 5 & VALOR_IDADE <= 6 ~ "5 e 6 anos",
+      TRUE ~ "Sem informação precisa"
+    ),
+    FX_CRIANCAS = case_when(
+      UNIDADE_IDADE == "4" & VALOR_IDADE == 1                    ~ "1 a < 2 anos",
+      UNIDADE_IDADE == "4" & VALOR_IDADE >= 2 & VALOR_IDADE < 5  ~ "2 a < 5 anos",
+      UNIDADE_IDADE == "4" & VALOR_IDADE >= 5 & VALOR_IDADE <= 6 ~ "5 e 6 anos",
+      TRUE ~ "Sem informação precisa"
+    )
+  )
+
+cores_visao_geral <- c("Menor de 1 ano" = "#c0392b", "1 a < 5 anos" = "#e67e22", "5 e 6 anos" = "#2980b9")
+cores_criancas    <- c("1 a < 2 anos" = "#16a085", "2 a < 5 anos" = "#2980b9", "5 e 6 anos" = "#8e44ad")
+
+.gerar_figs_evolucao_faixa_sim <- function(df, col_faixa, niveis, cores, titulo, prefixo) {
+  dados <- df %>%
+    filter(.data[[col_faixa]] %in% niveis, !is.na(ANO_OBITO)) %>%
+    count(ANO_OBITO, FAIXA = .data[[col_faixa]], name = "n") %>%
+    left_join(sinasc_br, by = c("ANO_OBITO" = "ano")) %>%
+    mutate(
+      taxa  = n / nascidos_br * MULT,
+      FAIXA = factor(FAIXA, levels = niveis)
+    )
+  
+  g_taxa <- ggplot(dados, aes(x = ANO_OBITO, y = taxa, color = FAIXA, group = FAIXA)) +
+    geom_line(linewidth = 1.2) +
+    geom_point(size = 3, shape = 21, fill = "white", stroke = 1.2) +
+    scale_color_manual(values = cores) +
+    scale_x_continuous(breaks = 2015:2024) +
+    labs(
+      title    = titulo,
+      subtitle = paste0("Taxa ", LABEL_TAXA, " | 2015–2024"),
+      x = "Ano", y = paste0("Taxa (", LABEL_TAXA, ")"),
+      caption = "Fonte: SIM e SINASC/DATASUS"
+    ) +
+    tema_executivo()
+  ggsave(file.path(dir_analises, paste0(prefixo, "_Taxa.png")), g_taxa, width = 10, height = 6, dpi = 300)
+  
+  g_abs <- ggplot(dados, aes(x = ANO_OBITO, y = n, color = FAIXA, group = FAIXA)) +
+    geom_line(linewidth = 1.2) +
+    geom_point(size = 3, shape = 21, fill = "white", stroke = 1.2) +
+    scale_color_manual(values = cores) +
+    scale_x_continuous(breaks = 2015:2024) +
+    scale_y_continuous(labels = comma) +
+    labs(
+      title    = titulo,
+      subtitle = "Brasil, 2015–2024 | Óbitos absolutos",
+      x = "Ano", y = "Número de Óbitos",
+      caption = "Fonte: SIM/DATASUS"
+    ) +
+    tema_executivo()
+  ggsave(file.path(dir_analises, paste0(prefixo, "_Absoluto.png")), g_abs, width = 10, height = 6, dpi = 300)
+}
+
+# (a) Visão geral: < 1 ano, 1 a < 5 anos, 5 e 6 anos
+.gerar_figs_evolucao_faixa_sim(
+  base_faixas_fina, "FX_VISAO_GERAL",
+  c("Menor de 1 ano", "1 a < 5 anos", "5 e 6 anos"),
+  cores_visao_geral,
+  "Evolução da Mortalidade na Primeira Infância — Visão Geral",
+  "Fig01a_Evolucao_VisaoGeral"
+)
+
+# (b) Neonatal: precoce, tardia, pós-neonatal (reaproveita GRUPO_ETARIO)
+.gerar_figs_evolucao_faixa_sim(
+  base_faixas_fina, "GRUPO_ETARIO",
+  c("Neonatal Precoce (0-6 dias)", "Neonatal Tardia (7-27 dias)", "Pós-Neonatal (28 dias a <1 ano)"),
+  cores_faixa[c("Neonatal Precoce (0-6 dias)", "Neonatal Tardia (7-27 dias)", "Pós-Neonatal (28 dias a <1 ano)")],
+  "Evolução da Mortalidade no Período Neonatal",
+  "Fig01b_Evolucao_Neonatal"
+)
+
+# (c) Crianças: 1 a < 2 anos, 2 a < 5 anos, 5 e 6 anos
+.gerar_figs_evolucao_faixa_sim(
+  base_faixas_fina, "FX_CRIANCAS",
+  c("1 a < 2 anos", "2 a < 5 anos", "5 e 6 anos"),
+  cores_criancas,
+  "Evolução da Mortalidade para Crianças (1 a 6 Anos)",
+  "Fig01c_Evolucao_Criancas"
+)
+
+
 # ── Fig02: Evolução das Causas — TAXA ponderada pelo SINASC ────────────────
 cat("  Fig02: Evolução das Causas (taxa)...\n")
 
@@ -329,8 +500,7 @@ obitos_uf <- base_analise %>%
     taxa_estado = obitos_total / nv_total * MULT
   )
 
-malha_br <- read_state(year = 2020, showProgress = FALSE) %>%
-  mutate(code_state = as.numeric(code_state))
+malha_br <- ler_malha_uf()
 
 mapa_uf <- left_join(malha_br, obitos_uf, by = "code_state")
 
@@ -467,7 +637,7 @@ polos <- fluxo %>%
   slice_head(n = 30)
 
 mun_nomes <- tryCatch({
-  geobr::lookup_muni(code_muni = "all") %>%
+  ler_lookup_municipios() %>%
     mutate(cod_mun_6 = substr(as.character(code_muni), 1, 6)) %>%
     select(cod_mun_6, name_muni, abbrev_state) %>%
     distinct()
@@ -590,7 +760,7 @@ mapa_raca_cor <- c(
 # Garantir nomes dos municípios
 if (!exists("mun_nomes") || is.null(mun_nomes)) {
   mun_nomes <- tryCatch({
-    geobr::lookup_muni(code_muni = "all") %>%
+    ler_lookup_municipios() %>%
       mutate(cod_mun_6 = substr(as.character(code_muni), 1, 6)) %>%
       select(cod_mun_6, name_muni, abbrev_state) %>%
       distinct()
@@ -1198,15 +1368,7 @@ tab_fluxo_cep_polos <- fluxo_cep_base %>%
 #     Insumo para "vazios assistenciais": quão longe a criança precisa ir até o
 #     polo. Calculado por Haversine entre centroides de residência e ocorrência.
 dist_polos <- tryCatch({
-  centroides <- read_municipality(year = 2020, showProgress = FALSE) %>%
-    sf::st_make_valid() %>%
-    mutate(cod_mun_6 = substr(as.character(code_muni), 1, 6))
-  
-  cent_pt <- suppressWarnings(sf::st_centroid(centroides)) %>%
-    mutate(lon = sf::st_coordinates(.)[, 1],
-           lat = sf::st_coordinates(.)[, 2]) %>%
-    sf::st_drop_geometry() %>%
-    select(cod_mun_6, lon, lat)
+  cent_pt <- ler_centroides_municipios()
   
   fluxo_polos %>%
     left_join(cent_pt, by = c("COD_MUN_RES" = "cod_mun_6")) %>%

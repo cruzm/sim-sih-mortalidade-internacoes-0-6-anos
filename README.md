@@ -40,6 +40,8 @@ As taxas são expressas por **1.000 nascidos vivos**, permitindo comparações p
 
 Para a leitura de **polos de referência**, os diagnósticos são segmentados em grupos de alta complexidade (oncologia, cardiopatias congênitas, malformações, doenças do sistema nervoso e metabólicas/genéticas). As **afecções perinatais** são analisadas em separado, pois parte do evento perinatal recebido nos polos reflete o **local de parto** (gestação de risco referenciada à maternidade da capital) e não o deslocamento da criança em busca de tratamento. Define-se assim o conceito de **referência terapêutica** (alta complexidade *sem* perinatal), que é o fluxo "limpo" para identificar centros de referência e vazios assistenciais.
 
+> ℹ️ **Nota técnica sobre mapas.** As malhas geográficas (UF e centroides municipais) são obtidas de fontes abertas oficiais (GeoJSON com códigos IBGE e CSV de coordenadas municipais), baixadas uma única vez e cacheadas localmente. Essa abordagem substitui o pacote `geobr` para garantir reprodutibilidade e execução offline após o primeiro download.
+
 ---
 
 ## 📁 Scripts do Projeto
@@ -79,6 +81,28 @@ As análises incluem evolução temporal, causas de mortalidade, desigualdades r
 <div align="center">
   <img src="outputs/SIM/Fig01_Evolucao_Faixa_Etaria_Absoluto.png" width="850">
 </div>
+
+### Evolução da Mortalidade — Visão Geral, Neonatal e Crianças
+
+Recortes de evolução solicitados na apresentação, apresentando lado a lado a **taxa por 1.000 nascidos vivos** e o **número absoluto de óbitos** (2015–2024).
+
+**Visão geral — menores de 1 ano, 1 a < 5 anos, 5 e 6 anos**
+
+| Taxa por 1.000 N.V. | Óbitos absolutos |
+|:---:|:---:|
+| <img src="outputs/SIM/Fig01a_Evolucao_VisaoGeral_Taxa.png" width="420"> | <img src="outputs/SIM/Fig01a_Evolucao_VisaoGeral_Absoluto.png" width="420"> |
+
+**Neonatal — precoce (0–6 d), tardia (7–27 d) e pós-neonatal (28 d a < 1 ano)**
+
+| Taxa por 1.000 N.V. | Óbitos absolutos |
+|:---:|:---:|
+| <img src="outputs/SIM/Fig01b_Evolucao_Neonatal_Taxa.png" width="420"> | <img src="outputs/SIM/Fig01b_Evolucao_Neonatal_Absoluto.png" width="420"> |
+
+**Crianças — 1 a < 2 anos, 2 a < 5 anos e 5 e 6 anos**
+
+| Taxa por 1.000 N.V. | Óbitos absolutos |
+|:---:|:---:|
+| <img src="outputs/SIM/Fig01c_Evolucao_Criancas_Taxa.png" width="420"> | <img src="outputs/SIM/Fig01c_Evolucao_Criancas_Absoluto.png" width="420"> |
 
 ### Evolução das Causas de Mortalidade — Taxa por 1.000 Nascidos Vivos
 
@@ -195,6 +219,28 @@ As análises complementam o módulo de mortalidade do SIM, permitindo avaliar pa
 <div align="center">
   <img src="outputs/SIH/Fig01_Evolucao_Faixa_Etaria_Absoluto.png" width="850">
 </div>
+
+### Evolução das Internações — Visão Geral, Neonatal e Crianças
+
+Recortes de evolução solicitados na apresentação, apresentando lado a lado a **taxa por 1.000 nascidos vivos** e o **número absoluto de internações** (2015–2024).
+
+**Visão geral — menores de 1 ano, 1 a < 5 anos, 5 e 6 anos**
+
+| Taxa por 1.000 N.V. | Internações absolutas |
+|:---:|:---:|
+| <img src="outputs/SIH/Fig01a_Evolucao_VisaoGeral_Taxa.png" width="420"> | <img src="outputs/SIH/Fig01a_Evolucao_VisaoGeral_Absoluto.png" width="420"> |
+
+**Neonatal — precoce (0–6 d), tardia (7–27 d) e pós-neonatal (28 d a < 1 ano)**
+
+| Taxa por 1.000 N.V. | Internações absolutas |
+|:---:|:---:|
+| <img src="outputs/SIH/Fig01b_Evolucao_Neonatal_Taxa.png" width="420"> | <img src="outputs/SIH/Fig01b_Evolucao_Neonatal_Absoluto.png" width="420"> |
+
+**Crianças — 1 a < 2 anos, 2 a < 5 anos e 5 e 6 anos**
+
+| Taxa por 1.000 N.V. | Internações absolutas |
+|:---:|:---:|
+| <img src="outputs/SIH/Fig01c_Evolucao_Criancas_Taxa.png" width="420"> | <img src="outputs/SIH/Fig01c_Evolucao_Criancas_Absoluto.png" width="420"> |
 
 ### Evolução das Causas de Internação — Taxa por 1.000 Nascidos Vivos
 
@@ -323,6 +369,12 @@ sim-sih-mortalidade-internacoes-0-6-anos/
 │   │
 │   ├── SIM/
 │   │   ├── Fig01_Evolucao_Faixa_Etaria_Absoluto.png
+│   │   ├── Fig01a_Evolucao_VisaoGeral_Taxa.png
+│   │   ├── Fig01a_Evolucao_VisaoGeral_Absoluto.png
+│   │   ├── Fig01b_Evolucao_Neonatal_Taxa.png
+│   │   ├── Fig01b_Evolucao_Neonatal_Absoluto.png
+│   │   ├── Fig01c_Evolucao_Criancas_Taxa.png
+│   │   ├── Fig01c_Evolucao_Criancas_Absoluto.png
 │   │   ├── Fig02_Evolucao_Causas_Taxa.png
 │   │   ├── Fig03_Causas_Prioritarias_por_Faixa.png
 │   │   ├── Fig04_Heterogeneidade_Macro_Taxa.png
@@ -341,6 +393,12 @@ sim-sih-mortalidade-internacoes-0-6-anos/
 │   │
 │   └── SIH/
 │       ├── Fig01_Evolucao_Faixa_Etaria_Absoluto.png
+│       ├── Fig01a_Evolucao_VisaoGeral_Taxa.png
+│       ├── Fig01a_Evolucao_VisaoGeral_Absoluto.png
+│       ├── Fig01b_Evolucao_Neonatal_Taxa.png
+│       ├── Fig01b_Evolucao_Neonatal_Absoluto.png
+│       ├── Fig01c_Evolucao_Criancas_Taxa.png
+│       ├── Fig01c_Evolucao_Criancas_Absoluto.png
 │       ├── Fig02_Evolucao_Causas_Taxa.png
 │       ├── Fig03_Causas_Prioritarias_por_Faixa.png
 │       ├── Fig04_Heterogeneidade_Macro_Taxa.png
