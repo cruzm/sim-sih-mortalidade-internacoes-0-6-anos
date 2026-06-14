@@ -161,6 +161,17 @@
  
 
 
+\setbeamertemplate{footline}{
+  \leavevmode%
+  \hbox{%
+  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,left,leftskip=1ex]{author in head/foot}%
+    \usebeamerfont{author in head/foot}\insertshortauthor
+  \end{beamercolorbox}%
+  \begin{beamercolorbox}[wd=.5\paperwidth,ht=2.25ex,dp=1ex,right,rightskip=1ex]{date in head/foot}%
+    \insertframenumber{} / \inserttotalframenumber
+  \end{beamercolorbox}}%
+  \vskip0pt%
+}
 \makeatletter
 \@ifpackageloaded{caption}{}{\usepackage{caption}}
 \AtBeginDocument{%
@@ -217,7 +228,7 @@
 Infância}{Mortalidade e Internações na Primeira Infância}}
 \subtitle{\texorpdfstring{Evolução do Projeto}{Evolução do Projeto}}
 \author{}
-\date{2026-06-01}
+\date{}
 
 \begin{document}
 \frame{\titlepage}
@@ -328,40 +339,160 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Evolução da Mortalidade na Primeira Infância}
-\protect\phantomsection\label{evoluuxe7uxe3o-da-mortalidade-na-primeira-infuxe2ncia}
+\begin{frame}{Evolução da Mortalidade}
+\protect\phantomsection\label{evoluuxe7uxe3o-da-mortalidade}
 \begin{itemize}
 \tightlist
 \item
-  Fazer gráfico de taxa de mortalidade e mortalidade por milhares para
-  menos que um ano, 1 a menos que 5 anos e 5 e 6 anos, como na visão
-  geral; referência:
-  https://data.unicef.org/resources/levels-and-trends-in-child-mortality-2024/
+  Mortalidade em menores de 1 ano é dominante, a taxa é quase 9 vezes
+  superior à faixa de 1 a 4 anos
+\item
+  Tendência de queda moderada no período, com desaceleração após a
+  pandemia
+\item
+  Crianças de 5 e 6 anos apresentam taxas muito reduzidas, menos que 0,5
+  por mil nascidos vivos
+\item
+  Queda absoluta nos óbitos de menores de 1 ano foi de 32 mil para 30
+  mil no período
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Evolução da Mortalidade na Primeira Infância}
+\protect\phantomsection\label{evoluuxe7uxe3o-da-mortalidade-na-primeira-infuxe2ncia}
+\begin{columns}[T]
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig01a_Evolucao_VisaoGeral_Taxa.png}
+
+}
+
+\caption{Taxa de mortalidade por faixa etária por mil nascidos vivos}
+
+\end{figure}%
+\end{column}
+
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig01a_Evolucao_VisaoGeral_Absoluto.png}
+
+}
+
+\caption{Óbitos absolutos por faixa etária}
+
+\end{figure}%
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Mortalidade Neonatal}
+\protect\phantomsection\label{mortalidade-neonatal}
+\begin{itemize}
+\tightlist
+\item
+  Neonatal precoce apresenta o declínio mais expressivo
+\item
+  Neonatal tardio permanece relativamente estável; queda após a pandemia
+\item
+  Cada componente contribui com 5 mil a 15 mil óbitos por ano; soma
+  supera 25 mil no período recente
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Evolução da Mortalidade no Neonatal}
 \protect\phantomsection\label{evoluuxe7uxe3o-da-mortalidade-no-neonatal}
+\begin{columns}[T]
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig01b_Evolucao_Neonatal_Taxa.png}
+
+}
+
+\caption{Taxa de mortalidade neonatal por mil nascidos vivos}
+
+\end{figure}%
+\end{column}
+
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig01b_Evolucao_Neonatal_Absoluto.png}
+
+}
+
+\caption{Óbitos neonatais absolutos}
+
+\end{figure}%
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Mortalidade em Crianças (1 a 6 anos)}
+\protect\phantomsection\label{mortalidade-em-crianuxe7as-1-a-6-anos}
 \begin{itemize}
 \tightlist
 \item
-  Fazer gráfico de taxa de mortalidade e mortalidade por milhares para
-  neotanal por neonatal precoce, neonatal tardia, pós-neonatal
+  Crianças de 1 a menos de 2 anos têm a maior taxa no grupo
+\item
+  Tendência de alta nas taxas após pandemia
+\item
+  Óbitos totais neste grupo: 8 mil a 10 mil por ano, muito abaixo dos
+  quase 30 mil de menores de 1 ano
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Evolução da Mortalidade para Crianças}
 \protect\phantomsection\label{evoluuxe7uxe3o-da-mortalidade-para-crianuxe7as}
-\begin{itemize}
-\tightlist
-\item
-  Fazer gráfico de taxa de mortalidade e mortalidade por milhares para
-  crianças: 1 a \textless{} 2 anos, 2 a \textless{} 5 anos e 5 e 6 anos
-\end{itemize}
+\begin{columns}[T]
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig01c_Evolucao_Criancas_Taxa.png}
+
+}
+
+\caption{Taxa de mortalidade em crianças por mil nascidos vivos}
+
+\end{figure}%
+\end{column}
+
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig01c_Evolucao_Criancas_Absoluto.png}
+
+}
+
+\caption{Óbitos absolutos em crianças}
+
+\end{figure}%
+\end{column}
+\end{columns}
 \end{frame}
 
 \begin{frame}{Causas de Mortalidade}
 \protect\phantomsection\label{causas-de-mortalidade}
+\begin{itemize}
+\tightlist
+\item
+  Afecções perinatais dominam: responsáveis por mais da metade dos
+  óbitos ao longo do período
+\item
+  Malformações congênitas são a segunda causa, com participação
+  crescente
+\item
+  Causas externas e infecciosas ganham relevância ao longo do período
+\item
+  Taxa total apresenta elevação após 2020, refletindo impacto da
+  pandemia
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Causas de Mortalidade}
+\protect\phantomsection\label{causas-de-mortalidade-1}
 \begin{figure}[H]
 
 {\centering \includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig02_Evolucao_Causas_Taxa.png}
@@ -371,6 +502,22 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \caption{Evolução das causas de mortalidade, 2015--2024}
 
 \end{figure}%
+\end{frame}
+
+\begin{frame}{Causas por Faixa Etária}
+\protect\phantomsection\label{causas-por-faixa-etuxe1ria}
+\begin{itemize}
+\tightlist
+\item
+  Neonatal precoce e tardio têm 70\% e 77\% dos óbitos ligados à atenção
+  à gestação e ao parto
+\item
+  Pós-neonatal: perfil misto, malformações (28\%), causas de difícil
+  prevenção (32\%), ação prioritária (25\%)
+\item
+  1 a 6 anos: maioria de causas de difícil prevenção (63\%), seguida de
+  ação prioritária (24\%)
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Causas de Mortalidade por Faixa Etária}
@@ -384,6 +531,19 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \caption{Causas prioritárias de mortalidade, 2015--2024}
 
 \end{figure}%
+\end{frame}
+
+\begin{frame}{Desigualdades Regionais da Mortalidade}
+\protect\phantomsection\label{desigualdades-regionais-da-mortalidade}
+\begin{itemize}
+\tightlist
+\item
+  Norte apresenta taxa superior ao Sul em mais da sua metade
+\item
+  Mapa estadual revela Roraima e Amapá com as maiores taxas do país
+\item
+  A desigualdade persiste em todas as faixas etárias
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Análise Espacial e Desigualdades Regionais da Mortalidade}
@@ -403,7 +563,7 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \protect\phantomsection\label{anuxe1lise-espacial-e-desigualdades-regionais-da-mortalidade-1}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig06_Mapa_Taxa_Macrorregiao.png}
+{\centering \includegraphics[width=0.5\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig06_Mapa_Taxa_Macrorregiao.png}
 
 }
 
@@ -417,7 +577,7 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \protect\phantomsection\label{anuxe1lise-espacial-e-desigualdades-regionais-da-mortalidade-2}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig05_Mapa_Taxa_Estado.png}
+{\centering \includegraphics[width=0.5\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig05_Mapa_Taxa_Estado.png}
 
 }
 
@@ -439,11 +599,30 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Fluxos de Mortalidade}
+\protect\phantomsection\label{fluxos-de-mortalidade}
+\begin{itemize}
+\tightlist
+\item
+  PE (64,9\%) e SE (64,3\%) lideram a proporção de óbitos fora do
+  município de residência
+\item
+  Recife é o maior polo receptor: 8.641 óbitos no período, seguido por
+  São Paulo (5.727) e Belém (5.653)
+\item
+  A concentração em capitais do Norte e Nordeste evidencia vazios
+  assistenciais nos municípios de origem
+\item
+  Fluxos intermunicipais refletem alta dependência de centros de
+  referência para atenção neonatal
+\end{itemize}
+\end{frame}
+
 \begin{frame}{Fluxos de Mortalidade e Polos de Ocorrência}
 \protect\phantomsection\label{fluxos-de-mortalidade-e-polos-de-ocorruxeancia-1}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig07_Fluxo_Obitos_Fora_Municipio.png}
+{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig07_Fluxo_Obitos_Fora_Municipio.png}
 
 }
 
@@ -456,7 +635,7 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \protect\phantomsection\label{fluxos-de-mortalidade-e-polos-de-ocorruxeancia-2}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.8\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig08_Polos_Saude_Infantil_Top30.png}
+{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig08_Polos_Saude_Infantil_Top30.png}
 
 }
 
@@ -469,7 +648,7 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \protect\phantomsection\label{fluxos-de-mortalidade-e-polos-de-ocorruxeancia-3}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.75\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig09_Heatmap_Fluxo_InterUF.png}
+{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig09_Heatmap_Fluxo_InterUF.png}
 
 }
 
@@ -507,6 +686,23 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Segmentação Diagnóstica}
+\protect\phantomsection\label{segmentauxe7uxe3o-diagnuxf3stica}
+\begin{itemize}
+\tightlist
+\item
+  Afecções perinatais concentram 15.345 óbitos no neonatal precoce
+\item
+  Cardiopatias congênitas: polo principal em São Paulo (1.410), Porto
+  Alegre (1.098) e Recife (1.083)
+\item
+  Neoplasias: São Paulo (485), Belém (302) e Recife (294)
+\item
+  Malformações: Recife lidera com 1.757 óbitos recebidos, revelando
+  forte polo nordestino
+\end{itemize}
+\end{frame}
+
 \begin{frame}{Segmentação Diagnóstica nos Polos}
 \protect\phantomsection\label{segmentauxe7uxe3o-diagnuxf3stica-nos-polos}
 \begin{figure}[H]
@@ -538,7 +734,7 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \protect\phantomsection\label{fluxo-origem-ao-polo}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.7\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig12_Fluxo_CEP_Origem_Destino_Polos.png}
+{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIM/Fig12_Fluxo_CEP_Origem_Destino_Polos.png}
 
 }
 
@@ -548,35 +744,145 @@ IGME) 2025), (Brasil. Ministério da Saúde 2026), (França e Lansky 2009)
 \end{figure}%
 \end{frame}
 
-\begin{frame}{Evolução de Internações na Primeira Infância}
-\protect\phantomsection\label{evoluuxe7uxe3o-de-internauxe7uxf5es-na-primeira-infuxe2ncia}
+\begin{frame}{Evolução das Internações}
+\protect\phantomsection\label{evoluuxe7uxe3o-das-internauxe7uxf5es}
 \begin{itemize}
 \tightlist
 \item
-  Fazer gráfico de taxa de internação e internação por milhares para
-  menos que um ano, 1 a menos que 5 anos e 5 e 6 anos, como na visão
-  geral; referência:
-  https://data.unicef.org/resources/levels-and-trends-in-child-mortality-2024/
+  Taxa de internação em crescimento em todas as faixas etárias ao longo
+  do período
+\item
+  Menores de 1 ano dominam: 300 internações por mil nascidos vivos
+\item
+  Queda abrupta na pandemia, seguida de recuperação acima dos níveis
+  pré-pandemia
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Evolução de Internações na Primeira Infância}
+\protect\phantomsection\label{evoluuxe7uxe3o-de-internauxe7uxf5es-na-primeira-infuxe2ncia}
+\begin{columns}[T]
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig01a_Evolucao_VisaoGeral_Taxa.png}
+
+}
+
+\caption{Taxa de internação por faixa etária por mil nascidos vivos}
+
+\end{figure}%
+\end{column}
+
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig01a_Evolucao_VisaoGeral_Absoluto.png}
+
+}
+
+\caption{Internações absolutas por faixa etária}
+
+\end{figure}%
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Internações Neonatais}
+\protect\phantomsection\label{internauxe7uxf5es-neonatais}
+\begin{itemize}
+\tightlist
+\item
+  Todas as três faixas neonatais apresentam tendência crescente ao longo
+  do período
+\item
+  Recuperação pós-pandemia supera os patamares de 2015 em todas as
+  faixas neonatais
 \end{itemize}
 \end{frame}
 
 \begin{frame}{Evolução de Internações para Neonatal}
 \protect\phantomsection\label{evoluuxe7uxe3o-de-internauxe7uxf5es-para-neonatal}
+\begin{columns}[T]
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig01b_Evolucao_Neonatal_Taxa.png}
+
+}
+
+\caption{Taxa de internação neonatal por mil nascidos vivos}
+
+\end{figure}%
+\end{column}
+
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig01b_Evolucao_Neonatal_Absoluto.png}
+
+}
+
+\caption{Internações neonatais absolutas}
+
+\end{figure}%
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Internações em Crianças (1--6 anos)}
+\protect\phantomsection\label{internauxe7uxf5es-em-crianuxe7as-16-anos}
 \begin{itemize}
 \tightlist
 \item
-  Fazer gráfico de taxa de internação e internação por milhares para
-  neotanal por neonatal precoce, neonatal tardia, pós-neonatal
+  1 a menos de 2 anos lidera: taxa de 120 por mil nascidos vivos, com
+  crescimento acentuado após 2020
+\item
+  Faixa de 2 a menos que 5 anos: 65 por mil nascidos vivos, crescimento
+  moderado mas consistente
 \end{itemize}
 \end{frame}
 
-\begin{frame}{Evolução da Internações para Crianças}
-\protect\phantomsection\label{evoluuxe7uxe3o-da-internauxe7uxf5es-para-crianuxe7as}
+\begin{frame}{Evolução de Internações para Crianças}
+\protect\phantomsection\label{evoluuxe7uxe3o-de-internauxe7uxf5es-para-crianuxe7as}
+\begin{columns}[T]
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig01c_Evolucao_Criancas_Taxa.png}
+
+}
+
+\caption{Taxa de internação em crianças por mil nascidos vivos}
+
+\end{figure}%
+\end{column}
+
+\begin{column}{0.5\linewidth}
+\begin{figure}[H]
+
+{\centering \includegraphics[width=1\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig01c_Evolucao_Criancas_Absoluto.png}
+
+}
+
+\caption{Internações absolutas em crianças}
+
+\end{figure}%
+\end{column}
+\end{columns}
+\end{frame}
+
+\begin{frame}{Causas de Internação}
+\protect\phantomsection\label{causas-de-internauxe7uxe3o}
 \begin{itemize}
 \tightlist
 \item
-  Fazer gráfico de taxa de internação e internação por milhares para
-  crianças: 1 a \textless{} 2 anos, 2 a \textless{} 5 anos e 5 e 6 anos
+  Afecções perinatais dominam: maior causa absoluta de internação
+\item
+  Aparelho respiratório é outra principal causa e está crescendo
+\item
+  Neonatal precoce: 84\% das internações por atenção à gestação e ao
+  parto
 \end{itemize}
 \end{frame}
 
@@ -605,6 +911,22 @@ Vivos, 2015-2024}
 \caption{Causas Prioritárias de Internação por Faixa Etária, 2015-2024}
 
 \end{figure}%
+\end{frame}
+
+\begin{frame}{Desigualdades Regionais das Internações}
+\protect\phantomsection\label{desigualdades-regionais-das-internauxe7uxf5es}
+\begin{itemize}
+\tightlist
+\item
+  Sul tem a maior taxa de internação 480 por mil nascidos vivos, mas a
+  menor mortalidade
+\item
+  Norte, com menor taxa de internação, apresenta a maior mortalidade --
+  evidência de vazio assistencial
+\item
+  Centro-Oeste apresenta taxas intermediárias, com heterogeneidade
+  interna expressiva
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Análise Espacial e Desigualdades Regionais nas
@@ -664,6 +986,22 @@ Internações}
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Fluxos Assistenciais}
+\protect\phantomsection\label{fluxos-assistenciais}
+\begin{itemize}
+\tightlist
+\item
+  SE (56,6\%) e PE (55,4\%) lideram a proporção de internações fora do
+  município de residência
+\item
+  Recife é o maior polo: 260.437 internações recebidas -- o dobro do
+  segundo colocado, Belo Horizonte
+\item
+  Fortaleza e Brasília disputam o terceiro lugar, ambas com 125 mil
+  internações recebidas
+\end{itemize}
+\end{frame}
+
 \begin{frame}{Fluxos Assistenciais e Polos de Atendimento Infantil}
 \protect\phantomsection\label{fluxos-assistenciais-e-polos-de-atendimento-infantil-1}
 \begin{figure}[H]
@@ -708,7 +1046,7 @@ Internações}
 \protect\phantomsection\label{fluxos-assistenciais-e-polos-de-atendimento-infantil-4}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.9\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig10_Fluxos_Top10_Municipios_Receptores_SIH.png}
+{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig10_Fluxos_Top10_Municipios_Receptores_SIH.png}
 
 }
 
@@ -730,11 +1068,24 @@ Internações, 2015-2024}
 \end{itemize}
 \end{frame}
 
+\begin{frame}{Óbitos Hospitalares}
+\protect\phantomsection\label{uxf3bitos-hospitalares}
+\begin{itemize}
+\tightlist
+\item
+  21 mil óbitos hospitalares por ano no período, com queda em 2020 e
+  recuperação posterior
+\item
+  Recuperação acima do nível pré-pandemia sugere retorno de demanda
+  represada ou piora do quadro clínico
+\end{itemize}
+\end{frame}
+
 \begin{frame}{Óbitos Hospitalares e Letalidade Hospitalar}
 \protect\phantomsection\label{uxf3bitos-hospitalares-e-letalidade-hospitalar}
 \begin{figure}[H]
 
-{\centering \includegraphics[width=0.6\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig11_Obitos_Hospitalares_SIH.png}
+{\centering \includegraphics[width=0.8\linewidth,height=\textheight,keepaspectratio]{../outputs/SIH/Fig11_Obitos_Hospitalares_SIH.png}
 
 }
 
@@ -753,6 +1104,24 @@ Internações, 2015-2024}
   As afecções perinatais são analisadas em separado, e o fluxo de
   \textbf{referência terapêutica} (alta complexidade sem perinatal)
   revela a vocação de cada polo hospitalar.
+\end{itemize}
+\end{frame}
+
+\begin{frame}{Segmentação Diagnóstica}
+\protect\phantomsection\label{segmentauxe7uxe3o-diagnuxf3stica-1}
+\begin{itemize}
+\tightlist
+\item
+  Afecções perinatais 311.333 internações no neonatal precoce -- causa
+  dominante nessa faixa
+\item
+  Outras causas e aparelho respiratório: dominam internações de 1 a 6
+  anos
+\item
+  Cardiopatias: SP (7.939), Recife (7.187) e BH (7.028) lideram
+\item
+  Neoplasias: Recife (14.461) e São Paulo (14.418) empatam como maiores
+  polos oncológicos infantis
 \end{itemize}
 \end{frame}
 
@@ -798,10 +1167,43 @@ Complexidade}
 
 \begin{frame}{Conclusão}
 \protect\phantomsection\label{conclusuxe3o}
+\begin{itemize}
+\tightlist
+\item
+  Mortalidade infantil em \textbf{queda moderada} no período, mas com
+  desaceleração após 2020
+\item
+  \textbf{Afecções perinatais e malformações} concentram maioria dos
+  óbitos neonatais
+\item
+  Norte e Nordeste com \textbf{mortalidade superior} à do Sul,
+  desigualdade que persiste em todas as faixas etárias
+\item
+  Regiões com menor taxa de internação (Norte) têm maior mortalidade --
+  evidência de vazio assistencial
+\item
+  \textbf{Recife e São Paulo} emergem como os principais polos nacionais
+  de referência em alta complexidade pediátrica
+\item
+  Internações cresceram no período, especialmente após a pandemia --
+  sinal de demanda represada e recuperação do acesso
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Próximos Passos}
 \protect\phantomsection\label{pruxf3ximos-passos}
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Identificação de vazios assistenciais}: dimensionar municípios
+  sem acesso adequado à maternidade de risco e internação neonatal
+\item
+  \textbf{Cruzamento socioeconômico}: correlacionar taxas com IDH,
+  pobreza e cobertura da atenção primária
+\item
+  \textbf{Indicadores de qualidade}: comparar mortalidade hospitalar por
+  diagnóstico entre polos
+\end{itemize}
 \end{frame}
 
 \begin{frame}{Referências}
