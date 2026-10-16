@@ -4,6 +4,24 @@
 # v3.1 (07/08): base analítica restrita a óbito/transferência (o agregado da
 #   Etapa 5 cobre as altas); qualidade de preenchimento entre os pareados.
 #
+# v3.3 (26/08): responde aos comentários da proposta de linkage.
+#   (a) CASCATA DE DESFECHOS AIH A AIH. O painel mostrava T₀ → T₁ → T₂ como
+#       barras independentes sobre a mesma base, o que sugeria um funil onde
+#       não há um. Agora cada episódio é aberto na sequência real das suas
+#       AIHs: a AIH nº 1 é o estágio 1 e tem um desfecho (alta, óbito,
+#       transferência); a AIH nº 2 é o estágio 2 e só existe para quem
+#       continuou; e assim por diante. O agregado vai em `cascata_estagios.rds`
+#       e cobre TODOS os episódios (inclusive os de alta, que não entram na
+#       base analítica).
+#   (b) CAPTURA DO ALVO POR LOCAL DE OCORRÊNCIA. O alvo da Etapa 1 mistura
+#       LOCOCOR 1 (hospital) e LOCOCOR 2 (outro estabelecimento de saúde —
+#       UPA, pronto atendimento, UBS). Óbito em LOCOCOR 2 não gera AIH e
+#       portanto NÃO PODE ser pareado: contá-lo no denominador do linkage
+#       rebaixa a cobertura sem que exista falha de pareamento. A v3.3 marca
+#       cada óbito do alvo como pareado ou não e abre a conta por LOCOCOR,
+#       por UF e por estabelecimento (CODESTAB) — esta última é a lista que
+#       alimenta a conferência no SIA.
+#
 # v3.2 (08/08): CORRIGE a classificação do desfecho do episódio. Antes, o
 #   desfecho vinha da última AIH por data (last), o que perdia o óbito quando
 #   a última AIH tinha motivo de cobrança fora das faixas mapeadas ou quando
@@ -83,6 +101,8 @@ CONFIG <- list(
 CONFIG$saida_link  <- file.path(CONFIG$dir_dash, "sih_sim_linkado.rds")
 CONFIG$saida_qual  <- file.path(CONFIG$dir_dash, "linkage_qualidade.rds")
 CONFIG$saida_baixa <- file.path(CONFIG$dir_dash, "sih_nao_obito_agregado.rds")
+CONFIG$saida_casc  <- file.path(CONFIG$dir_dash, "cascata_estagios.rds")
+CONFIG$saida_cnes  <- file.path(CONFIG$dir_dash, "cnes_obitos_nao_capturados.csv")
 CONFIG$relatorio   <- file.path(CONFIG$dir_dash, "relatorio_linkage_v3.txt")
 CONFIG$app_r       <- file.path(CONFIG$dir_dash, "app.R")
 CONFIG$parciais    <- file.path(CONFIG$dir_dash, "dados", "parciais_v3")
@@ -100,7 +120,7 @@ dir.create(CONFIG$parciais, recursive = TRUE, showWarnings = FALSE)
 # chega ao resultado final. Em vez de exigir limpeza manual, a versao fica
 # gravada junto com o cache: se nao bater, o cache e descartado sozinho.
 # ----------------------------------------------------------------------------
-VERSAO_LOGICA <- "v3.2"
+VERSAO_LOGICA <- "v3.3"
 arq_versao <- file.path(CONFIG$parciais, "_versao.txt")
 versao_cache <- if (file.exists(arq_versao))
   tryCatch(readLines(arq_versao, warn = FALSE)[1], error = function(e) NA_character_) else NA_character_
@@ -474,6 +494,42 @@ processa_uf <- function(uf) {
               dias_internacao = pmax(1L, as.integer(t2 - t0)))
   ep <- ep[ep$ano %in% CONFIG$anos & !is.na(ep$desfecho), ]
   
+  # -- CASCATA DE ESTAGIOS (v3.3) -------------------------------------------
+  # Abre o episodio na sequencia real das AIHs. O estagio 1 e a primeira AIH
+  # do episodio; o estagio 2 so existe para quem teve uma segunda AIH; e assim
+  # por diante. O desfecho gravado aqui e o da PROPRIA AIH daquele estagio —
+  # nao o desfecho final do episodio. E isso que permite ler "no estagio 1,
+  # tantos foram para alta, tantos morreram, tantos foram transferidos; dos
+  # transferidos, no estagio 2 ..." sem inventar nenhuma etapa.
+  #
+  # Cobre TODOS os episodios, inclusive os que terminam em alta — que ficam
+  # de fora da base analitica do app e por isso nao poderiam ser recuperados
+  # depois. O resultado e um agregado pequeno, nao um microdado.
+  cs <- as.data.table(sih)[, .(pac, episodio, uf, regiao, sexo, faixa,
+                               desfecho, dt_inter, dt_saida,
+                               ano = as.integer(format(dt_saida, "%Y")))]
+  setorder(cs, pac, episodio, dt_inter, dt_saida)
+  cs[, estagio := seq_len(.N), by = .(pac, episodio)]
+  # Estrato do EPISODIO (primeira AIH), para o agregado nao trocar de faixa
+  # etaria no meio da trajetoria.
+  cs[, `:=`(ano_ep   = ano[1L],
+            faixa_ep = faixa[1L],
+            sexo_ep  = sexo[1L],
+            n_aih_ep = .N), by = .(pac, episodio)]
+  cs <- cs[ano_ep %in% CONFIG$anos & !is.na(faixa_ep)]
+  cs[is.na(desfecho), desfecho := "Outro/não classificado"]
+  # Desfecho da AIH ANTERIOR. E o que permite ler a subpopulacao: "dos que
+  # foram transferidos no estagio 1, no estagio 2 tantos tiveram alta, tantos
+  # morreram, tantos foram transferidos de novo". Sem esta coluna a leitura
+  # seria "quem teve uma segunda AIH", que nao e a mesma pergunta — a segunda
+  # AIH tambem aparece depois de alta com reinternacao rapida.
+  cs[, desfecho_ant := shift(desfecho, 1L, type = "lag"), by = .(pac, episodio)]
+  cs[estagio == 1L, desfecho_ant := "— (entrada)"]
+  cascata <- cs[, .(n = .N),
+                by = .(ano = ano_ep, uf, regiao, faixa = faixa_ep, sexo = sexo_ep,
+                       estagio, desfecho_ant, desfecho)]
+  rm(cs); gc(verbose = FALSE)
+  
   # -- ETAPA 2: pareia episódios com desfecho óbito contra o alvo do SIM -----
   ep_ob <- ep[ep$desfecho == "\u00d3bito", ]
   message("  episodios: ", format(nrow(ep), big.mark = "."),
@@ -543,7 +599,12 @@ processa_uf <- function(uf) {
               by = .(ano, uf, regiao, faixa, sexo, sistema, desfecho)]
   rm(sih, bx); gc(verbose = FALSE)
   
-  out <- list(ep = as.data.frame(ep), baixa = as.data.frame(baixa))
+  out <- list(ep = as.data.frame(ep), baixa = as.data.frame(baixa),
+              cascata = as.data.frame(cascata),
+              # ids dos obitos do SIM efetivamente pareados nesta UF — sao
+              # eles que permitem separar, no alvo, quem foi capturado de quem
+              # nao foi (v3.3). Vai no cache da UF para sobreviver a retomada.
+              id_sim = if (is.null(par2)) integer(0) else as.integer(par2$id_sim))
   message("  concluida em ",
           round(as.numeric(difftime(Sys.time(), ini, units = "mins")), 1), " min")
   saveRDS(out, arq)
@@ -563,7 +624,62 @@ if (!length(todas)) stop("Nenhuma UF processada.")
 
 base  <- as.data.frame(rbindlist(lapply(todas, `[[`, "ep"),    use.names = TRUE, fill = TRUE))
 baixa <- as.data.frame(rbindlist(lapply(todas, `[[`, "baixa"), use.names = TRUE, fill = TRUE))
+
+# ---- v3.3: cascata de estagios e ids do SIM pareados ------------------------
+casc_l <- lapply(todas, function(x) x$cascata)
+casc_l <- casc_l[!vapply(casc_l, is.null, logical(1))]
+cascata <- if (length(casc_l))
+  as.data.frame(rbindlist(casc_l, use.names = TRUE, fill = TRUE)) else
+    data.frame(ano = integer(0), uf = character(0), regiao = character(0),
+               faixa = character(0), sexo = character(0), estagio = integer(0),
+               desfecho_ant = character(0), desfecho = character(0),
+               n = integer(0), stringsAsFactors = FALSE)
+rm(casc_l)
+
+ID_SIM_PAREADOS <- unique(unlist(lapply(todas, function(x) x$id_sim), use.names = FALSE))
+ID_SIM_PAREADOS <- ID_SIM_PAREADOS[!is.na(ID_SIM_PAREADOS)]
+
 rm(todas); gc(verbose = FALSE)
+
+# Um mesmo obito do SIM nao pode ter sido capturado por duas UFs: o dedupe
+# por id_sim acontece dentro de pareia_uf, mas o alvo e nacional e a UF do
+# SIH e a do estabelecimento. Se aparecer duplicata entre UFs, o unique acima
+# ja resolveu — a checagem abaixo so garante que nao ha id fora do alvo.
+stopifnot(all(ID_SIM_PAREADOS %in% alvo$id_sim))
+alvo[, pareado := id_sim %in% ID_SIM_PAREADOS]
+alvo[, ano_ob := as.integer(format(dt_obito, "%Y"))]
+alvo[, uf_ocor := unname(UF_COD[substr(munic_ocor, 1, 2)])]
+
+LOCOCOR_NOME <- c("1" = "Hospital",
+                  "2" = "Outro estabelecimento de saúde",
+                  "3" = "Domicílio", "4" = "Via pública",
+                  "5" = "Outros", "6" = "Aldeia indígena",
+                  "9" = "Ignorado")
+
+CAPT_LOCOCOR <- as.data.frame(
+  alvo[, .(alvo = .N, pareados = sum(pareado), nao_pareados = sum(!pareado),
+           pct_capturado = 100 * mean(pareado)), by = .(local_ocor)])
+CAPT_LOCOCOR <- CAPT_LOCOCOR[order(CAPT_LOCOCOR$local_ocor), ]
+CAPT_LOCOCOR$local <- unname(LOCOCOR_NOME[CAPT_LOCOCOR$local_ocor])
+CAPT_LOCOCOR$local[is.na(CAPT_LOCOCOR$local)] <- "Não informado"
+CAPT_LOCOCOR <- CAPT_LOCOCOR[, c("local_ocor", "local", "alvo", "pareados",
+                                 "nao_pareados", "pct_capturado")]
+
+message("\nv3.3 · captura do alvo por local de ocorrencia:")
+print(CAPT_LOCOCOR)
+
+# Lista completa de estabelecimentos com obito nao capturado, por competencia.
+# E a entrada do 10_sia_*: com CNES e ano/mes da a competencia exata a
+# conferir na producao ambulatorial.
+cnes_nc <- alvo[pareado == FALSE & !is.na(codestab),
+                .(obitos_nao_capturados = .N),
+                by = .(codestab, local_ocor, uf_ocor,
+                       ano = ano_ob, mes = as.integer(format(dt_obito, "%m")))]
+setorder(cnes_nc, -obitos_nao_capturados)
+data.table::fwrite(cnes_nc, CONFIG$saida_cnes)
+message("Gravado: ", CONFIG$saida_cnes, " (",
+        format(nrow(cnes_nc), big.mark = "."), " linhas · ",
+        format(length(unique(cnes_nc$codestab)), big.mark = "."), " CNES)")
 
 # ============================================================================
 # ETAPA 4 — Base analítica: classificação CID e transições (com histórico)
@@ -629,6 +745,12 @@ saveRDS(baixa, CONFIG$saida_baixa)
 message("Gravado: ", CONFIG$saida_baixa, " (", format(nrow(baixa), big.mark = "."),
         " linhas agregadas — Etapa 5)")
 
+saveRDS(cascata, CONFIG$saida_casc)
+message("Gravado: ", CONFIG$saida_casc, " (", format(nrow(cascata), big.mark = "."),
+        " linhas agregadas — cascata de estagios, ",
+        format(sum(cascata$n[cascata$estagio == 1]), big.mark = "."),
+        " episodios no estagio 1)")
+
 # ============================================================================
 # Qualidade do linkage — métricas para o app e para o relatório
 # ============================================================================
@@ -636,6 +758,11 @@ ob  <- final %>% filter(desfecho == "\u00d3bito")
 lk  <- ob %>% filter(linkado)
 n_exato <- sum(lk$metodo == "Exato", na.rm = TRUE)
 n_prob  <- sum(lk$metodo == "Probabil\u00edstico", na.rm = TRUE)
+
+# Obitos distintos do SIM pareados (unidade: obito). nrow(lk) e maior:
+# conta episodios do SIH, e um obito pode ter mais de um.
+N_OB_PAREADOS <- if (exists("CAPT_LOCOCOR") && nrow(CAPT_LOCOCOR))
+  sum(CAPT_LOCOCOR$pareados) else nrow(lk)
 
 qual <- list(
   gerado_em = format(Sys.time(), "%Y-%m-%d %H:%M"),
@@ -647,12 +774,26 @@ qual <- list(
   # SIH conta EPISODIOS de internacao. Os dois universos so se encontram no
   # numero de pareados. Guardar as trilhas separadas evita a leitura errada
   # de que 374.604 "cai" para 323.802 — sao eixos diferentes.
+  # v3.3: o alvo aparece aberto por local de ocorrencia. Sem essa quebra, a
+  # cobertura de 50,6% e lida como falha de pareamento \u2014 quando boa parte do
+  # denominador e obito que nunca poderia ter gerado AIH.
   trilha_sim = data.frame(
     etapa = c("\u00d3bitos de 0 a 6 anos no SIM",
               "\u00d3bitos hospitalares (alvo \u2014 Etapa 1)",
+              "\u2014 em hospital (LOCOCOR 1)",
+              "\u2014 em outro estabelecimento de sa\u00fade (LOCOCOR 2)",
               "Alvo capturado na AIH (pareados)",
               "Alvo n\u00e3o capturado"),
-    n = c(N_SIM_TOTAL, N_SIM_HOSP, nrow(lk), N_SIM_HOSP - nrow(lk)),
+    # Unidade desta trilha e OBITO: o capturado e o numero de obitos
+    # DISTINTOS do SIM com pelo menos uma AIH pareada (N_OB_PAREADOS), nao
+    # nrow(lk), que conta EPISODIOS do SIH — um obito pareado a dois
+    # episodios (reinternacao) entraria duas vezes. Ate a v3.3 a linha usava
+    # nrow(lk) e o "nao capturado" saia 184.995 quando a captura por LOCOCOR
+    # dava 188.987.
+    n = c(N_SIM_TOTAL, N_SIM_HOSP,
+          sum(alvo$local_ocor == "1", na.rm = TRUE),
+          sum(alvo$local_ocor == "2", na.rm = TRUE),
+          N_OB_PAREADOS, N_SIM_HOSP - N_OB_PAREADOS),
     unidade = "\u00f3bitos (SIM)", stringsAsFactors = FALSE),
   
   trilha_sih = data.frame(
@@ -692,6 +833,40 @@ qual <- list(
   
   # Composição do LOCOCOR no SIM (transparência da Etapa 1)
   lococor = comp_lococor,
+  
+  # ---- v3.3 · POR QUE O ALVO NAO E TODO CAPTURAVEL ----------------------
+  # O alvo da Etapa 1 e "obito hospitalar", mas LOCOCOR 1 e LOCOCOR 2 tem
+  # naturezas diferentes: o obito em hospital pode ter gerado AIH; o obito em
+  # "outro estabelecimento de saude" (UPA, pronto atendimento, UBS) nao gera
+  # AIH nenhuma — o atendimento e ambulatorial e vai para o SIA. Manter os
+  # dois no mesmo denominador faz a cobertura do linkage parecer baixa por um
+  # motivo que nao e falha de pareamento.
+  captura_lococor = CAPT_LOCOCOR,
+  
+  captura_lococor_uf = as.data.frame(
+    alvo[!is.na(uf_res), .(alvo = .N, pareados = sum(pareado),
+                           pct_capturado = 100 * mean(pareado)),
+         by = .(uf = uf_res, local_ocor)][order(uf, local_ocor)]),
+  
+  captura_lococor_ano = as.data.frame(
+    alvo[!is.na(ano_ob), .(alvo = .N, pareados = sum(pareado),
+                           pct_capturado = 100 * mean(pareado)),
+         by = .(ano = ano_ob, local_ocor)][order(ano, local_ocor)]),
+  
+  # Os 40 estabelecimentos que mais concentram obito nao capturado. E a
+  # amostra que o painel exibe; a lista completa vai para o CSV que alimenta
+  # a conferencia no SIA.
+  top_cnes_nao_capturado = as.data.frame(
+    alvo[pareado == FALSE & !is.na(codestab),
+         .(obitos_nao_capturados = .N),
+         by = .(codestab, local_ocor, uf = uf_ocor)][
+           order(-obitos_nao_capturados)][seq_len(min(40, .N))]),
+  
+  # Quanto do nao capturado sequer tem CNES informado na DO — sem CNES nao ha
+  # como conferir no SIA nem em lugar nenhum.
+  nao_capturado_sem_cnes = as.data.frame(
+    alvo[pareado == FALSE, .(n = .N),
+         by = .(local_ocor, tem_cnes = !is.na(codestab))]),
   
   # Por ano: cobertura e composição exato × probabilístico
   por_ano = ob %>% group_by(ano) %>%
@@ -748,6 +923,49 @@ checa(sum(lk$teve_prev_30) <= sum(lk$teve_prev_45) &&
 checa(!any(baixa$desfecho == "\u00d3bito", na.rm = TRUE),
       "AIH com desfecho obito dentro do grupo de baixa mortalidade (Etapa 5)")
 checa(N_EP_TOTAL >= nrow(final), "episodios totais < base analitica")
+# ---- v3.3 -------------------------------------------------------------------
+# CAPT_LOCOCOR conta OBITOS DO SIM distintos; nrow(lk) conta EPISODIOS do SIH
+# marcados como linkados. Os dois nao sao iguais por construcao: o dedupe por
+# id_sim acontece DENTRO de pareia_uf, ou seja, por UF, enquanto o alvo e
+# nacional. Uma crianca residente numa UF e atendida em outra pode ter o mesmo
+# obito pareado em duas UFs — dois episodios do SIH apontando para um obito do
+# SIM. Nesse caso lk e maior. Nunca o contrario: se CAPT ficar MAIOR que lk,
+# ai sim ha id_sim fora do alvo e o script para.
+dup_par <- nrow(lk) - sum(CAPT_LOCOCOR$pareados)
+checa(dup_par >= 0, "captura por LOCOCOR maior que o total de pareados")
+if (dup_par > 0)
+  message("Nota: ", format(dup_par, big.mark = "."), " episodios do SIH (",
+          sprintf("%.2f%%", 100 * dup_par / nrow(lk)),
+          ") pareiam com um obito do SIM ja pareado em outra UF. ",
+          "Contagem por LOCOCOR usa obitos distintos do SIM: ",
+          format(sum(CAPT_LOCOCOR$pareados), big.mark = "."), ".")
+checa(sum(CAPT_LOCOCOR$alvo) == N_SIM_HOSP,
+      "alvo por LOCOCOR nao fecha com o alvo da Etapa 1")
+# O obito em LOCOCOR 2 (outro estabelecimento de saude) nao gera AIH: se
+# aparecer pareamento em volume nesse grupo, ou o LOCOCOR esta errado na DO
+# ou o pareamento esta frouxo. Nao e erro fatal, mas tem de aparecer no log.
+if (nrow(CAPT_LOCOCOR)) {
+  l2 <- CAPT_LOCOCOR[CAPT_LOCOCOR$local_ocor == "2", ]
+  if (nrow(l2) && isTRUE(l2$pct_capturado > 20))
+    message("AVISO: ", sprintf("%.1f%%", l2$pct_capturado),
+            " dos obitos em 'outro estabelecimento de saude' foram pareados ",
+            "com AIH. Conferir LOCOCOR na DO e o escore do probabilistico.")
+}
+checa(nrow(cascata) > 0, "cascata de estagios vazia")
+checa(min(cascata$estagio) == 1, "cascata sem estagio 1")
+# Todo episodio passa pelo estagio 1, entao o estagio 1 deve ficar proximo do
+# total de episodios da trilha do SIH. Nao sao identicos por construcao: a
+# trilha exclui episodios com desfecho final NA e usa o ano da AIH de
+# referencia, enquanto a cascata usa o ano da primeira AIH. Divergencia
+# pequena e esperada; grande e sinal de bug — por isso avisa em vez de parar.
+d_casc <- sum(cascata$n[cascata$estagio == 1]) - N_EP_TOTAL
+if (abs(d_casc) > N_EP_TOTAL * 0.03)
+  message("AVISO: estagio 1 da cascata difere de N_EP_TOTAL em ",
+          format(d_casc, big.mark = "."), " (",
+          sprintf("%.1f%%", 100 * d_casc / N_EP_TOTAL), ").")
+# A cascata so pode encolher: ninguem chega ao estagio k+1 sem passar por k.
+casc_est <- tapply(cascata$n, cascata$estagio, sum)
+checa(all(diff(as.numeric(casc_est)) <= 0), "cascata de estagios nao e monotonica")
 message("Checagens de consistencia: OK")
 
 # ============================================================================
@@ -774,10 +992,13 @@ rel <- c(
   paste0("    Obitos de 0 a 6 anos ................ ", format(N_SIM_TOTAL, big.mark = ".")),
   paste0("    Obitos hospitalares (alvo) .......... ", format(N_SIM_HOSP, big.mark = "."),
          "  (", pct(N_SIM_HOSP, N_SIM_TOTAL), " do SIM)"),
-  paste0("    Capturados na AIH ................... ", format(nrow(lk), big.mark = "."),
-         "  (", pct(nrow(lk), N_SIM_HOSP), " do alvo)"),
-  paste0("    Nao capturados ...................... ", format(N_SIM_HOSP - nrow(lk), big.mark = "."),
-         "  (", pct(N_SIM_HOSP - nrow(lk), N_SIM_HOSP), " do alvo)"),
+  paste0("    Capturados na AIH (obitos distintos)  ", format(N_OB_PAREADOS, big.mark = "."),
+         "  (", pct(N_OB_PAREADOS, N_SIM_HOSP), " do alvo)"),
+  paste0("      [episodios do SIH pareados: ", format(nrow(lk), big.mark = "."),
+         " — ", format(nrow(lk) - N_OB_PAREADOS, big.mark = "."),
+         " obitos com mais de um episodio]"),
+  paste0("    Nao capturados ...................... ", format(N_SIM_HOSP - N_OB_PAREADOS, big.mark = "."),
+         "  (", pct(N_SIM_HOSP - N_OB_PAREADOS, N_SIM_HOSP), " do alvo)"),
   "",
   "  TRILHA SIH (unidade: episodio de internacao)",
   paste0("    Episodios de 0 a 6 anos ............. ", format(N_EP_TOTAL, big.mark = "."),
@@ -795,6 +1016,55 @@ rel <- c(
   paste0("  Obitos 0-6 no SIM ................... ", format(N_SIM_TOTAL, big.mark = ".")),
   paste0("  Obitos hospitalares (alvo) .......... ", format(N_SIM_HOSP, big.mark = "."),
          "  (", pct(N_SIM_HOSP, N_SIM_TOTAL), ")"),
+  "",
+  "  CAPTURA POR LOCAL DE OCORRENCIA (v3.3)",
+  "  O obito em LOCOCOR 2 (outro estabelecimento de saude: UPA, pronto",
+  "  atendimento, UBS) e atendimento ambulatorial e nao gera AIH — logo nao",
+  "  pode ser pareado com o SIH. Mante-lo no denominador rebaixa a cobertura",
+  "  sem que exista falha de pareamento. A conferencia desse grupo e no SIA.",
+  paste0("    ", sprintf("%-34s %10s %10s %8s", "local de ocorrencia", "alvo",
+                         "pareados", "captura")),
+  if (nrow(CAPT_LOCOCOR))
+    unlist(lapply(seq_len(nrow(CAPT_LOCOCOR)), function(i)
+      paste0("    ", sprintf("%-34s %10s %10s %7.1f%%",
+                             substr(CAPT_LOCOCOR$local[i], 1, 34),
+                             format(CAPT_LOCOCOR$alvo[i], big.mark = "."),
+                             format(CAPT_LOCOCOR$pareados[i], big.mark = "."),
+                             CAPT_LOCOCOR$pct_capturado[i]))))
+  else "    (sem dados)",
+  "",
+  "  CASCATA DE ESTAGIOS (v3.3) — desfecho da AIH em cada estagio do episodio",
+  "  Estagio 1 = primeira AIH do episodio. Estagio 2 so existe para quem teve",
+  "  uma segunda AIH. O desfecho e o da propria AIH daquele estagio.",
+  local({
+    cc <- cascata %>% group_by(estagio, desfecho) %>%
+      summarise(n = sum(n), .groups = "drop_last") %>%
+      mutate(p = 100 * n / sum(n)) %>% ungroup() %>%
+      filter(estagio <= 4) %>% arrange(estagio, desc(n))
+    c(paste0("    ", sprintf("%-8s %-30s %12s %8s",
+                             "estagio", "desfecho da AIH", "n", "%")),
+      if (nrow(cc)) unlist(lapply(seq_len(nrow(cc)), function(i)
+        paste0("    ", sprintf("%-8s %-30s %12s %7.1f%%",
+                               cc$estagio[i], substr(cc$desfecho[i], 1, 30),
+                               format(cc$n[i], big.mark = "."),
+                               cc$p[i])))) else "    (sem registros)")
+  }),
+  "",
+  "  SUBPOPULACAO DOS TRANSFERIDOS — o que acontece no estagio seguinte",
+  local({
+    cc <- cascata %>% filter(desfecho_ant == "Transferência", estagio <= 4) %>%
+      group_by(estagio, desfecho) %>%
+      summarise(n = sum(n), .groups = "drop_last") %>%
+      mutate(p = 100 * n / sum(n)) %>% ungroup() %>%
+      filter(estagio <= 4) %>% arrange(estagio, desc(n))
+    c(paste0("    ", sprintf("%-8s %-30s %12s %8s",
+                             "estagio", "desfecho da AIH", "n", "%")),
+      if (nrow(cc)) unlist(lapply(seq_len(nrow(cc)), function(i)
+        paste0("    ", sprintf("%-8s %-30s %12s %7.1f%%",
+                               cc$estagio[i], substr(cc$desfecho[i], 1, 30),
+                               format(cc$n[i], big.mark = "."),
+                               cc$p[i])))) else "    (sem registros)")
+  }),
   "",
   "ETAPA 2 — LINKAGE OBITO x AIH",
   paste0("  Episodios SIH com desfecho obito .... ", format(nrow(ob), big.mark = ".")),
@@ -832,4 +1102,4 @@ rel <- c(
 
 writeLines(rel, CONFIG$relatorio)
 cat("\n", paste(rel, collapse = "\n"), "\n")
-message("\nPronto. Recarregue o Shiny — o app v5 le os tres arquivos novos.")
+message("\nPronto. Recarregue o Shiny — o app v5 le os tres arquivos novos.")

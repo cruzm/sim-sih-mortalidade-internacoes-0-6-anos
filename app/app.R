@@ -1683,6 +1683,124 @@ baixa_raw <- if (file.exists(BAIXA_ARQ))
 BAIXA_REAL <- is.data.frame(baixa_raw) && nrow(baixa_raw) > 0 &&
   all(c("ano", "uf", "sistema", "n") %in% names(baixa_raw))
 
+# ---- v3.3 · CASCATA DE ESTÁGIOS DA INTERNAÇÃO ------------------------------
+# Agregado gravado por 00_link_sih_sim_v3.R (v3.3). Uma linha por estrato ×
+# estágio × desfecho da AIH daquele estágio. O estágio 1 é a primeira AIH do
+# episódio; o estágio 2 só existe para quem teve uma segunda AIH.
+#
+# Sem o arquivo, o painel de trajetória volta ao gráfico anterior e avisa que
+# a cascata depende de rodar o script — nenhum estágio é reconstruído por
+# suposição a partir de n_aih.
+CASC_ARQ <- "cascata_estagios.rds"
+casc_raw <- if (file.exists(CASC_ARQ))
+  tryCatch(readRDS(CASC_ARQ), error = function(e) NULL) else NULL
+CASC_REAL <- is.data.frame(casc_raw) && nrow(casc_raw) > 0 &&
+  all(c("ano", "uf", "regiao", "faixa", "estagio", "desfecho", "n") %in%
+        names(casc_raw))
+if (CASC_REAL) casc_raw$estagio <- as.integer(casc_raw$estagio)
+
+# Desfechos possíveis de uma AIH, na ordem em que devem aparecer no gráfico.
+DESF_NIVEIS <- c("Alta", "Transferência", "Óbito",
+                 "Permanência", "Encerramento administrativo",
+                 "Outro/não classificado")
+DESF_COR <- c("Alta"                        = "#1E7B4F",
+              "Transferência"               = "#F4A261",
+              "Óbito"                       = "#C0392B",
+              "Permanência"                 = "#00A3A1",
+              "Encerramento administrativo" = "#8C95A3",
+              "Outro/não classificado"      = "#B9C0CA")
+
+# ---- Tipo de estabelecimento (opcional) ------------------------------------
+# Produzida por 10_cnes_sia.R: uma linha por CNES, com tipo de unidade, leitos
+# e habilitações. Quando existe, o painel dos óbitos não capturados nomeia o
+# tipo de cada estabelecimento (UPA, pronto socorro, UBS) em vez de mostrar só
+# o código. O nome antigo (cnes_tipo.csv) segue aceito como alternativa.
+#
+# Ordem de preferência: `estabelecimentos_dash.csv` (recorte leve, só quem
+# tem leito ou movimento — ~13 mil linhas, é o que sobe para o shinyapps),
+# depois `estabelecimentos.csv` (CNES inteiro, ~535 mil linhas, 87 MB — não
+# publicar) e por fim o antigo `cnes_tipo.csv`.
+CNES_TIPO_ARQ <- {
+  cand <- c("estabelecimentos_dash.csv", "estabelecimentos.csv", "cnes_tipo.csv")
+  ok <- cand[file.exists(cand)]
+  if (length(ok)) ok[1] else cand[1]
+}
+cnes_tipo <- if (file.exists(CNES_TIPO_ARQ))
+  tryCatch(utils::read.csv(CNES_TIPO_ARQ, colClasses = "character",
+                           fileEncoding = "UTF-8", check.names = FALSE),
+           error = function(e) NULL) else NULL
+CNES_TIPO_REAL <- is.data.frame(cnes_tipo) && nrow(cnes_tipo) > 0 &&
+  all(c("codestab", "tipo_unidade") %in% names(cnes_tipo))
+
+# ---- Nível de complexidade do estabelecimento ------------------------------
+# O CNES não traz um campo "terciário". A separação usa dois atributos
+# cadastrais, ambos objetivos e conferíveis na própria tabela:
+#   · tipo de unidade (05 hospital geral · 07 hospital especializado)
+#   · leitos de UTI neonatal e/ou pediátrica cadastrados (tipo de leito 3,
+#     códigos 62–63, 77–82)
+# Hospital COM UTI neonatal/pediátrica é o proxy de "terciário" — é onde a
+# alta complexidade da coorte 0–6 acontece. Hospital SEM essas UTIs é o
+# secundário/porta de entrada. O resto não interna (UPA, pronto socorro,
+# atenção básica) ou é outro tipo de unidade. Nada é inferido de nome ou de
+# porte: se o cadastro não traz o leito, o hospital cai em "sem UTI".
+COMPLEX_NIVEIS <- c(
+  "Hospital com UTI neonatal e/ou pediátrica (terciário)",
+  "Hospital sem UTI neonatal/pediátrica",
+  "Urgência sem internação (UPA, pronto socorro)",
+  "Atenção básica / ambulatorial",
+  "Outro tipo de unidade",
+  "CNES não localizado no cadastro")
+COMPLEX_COR <- c("#004B87", "#00A3A1", "#F4A261", "#8C95A3", "#B9C0CA", "#C0392B")
+names(COMPLEX_COR) <- COMPLEX_NIVEIS
+
+TP_HOSPITAL <- c("05", "07")
+TP_URGENCIA <- c("73", "20", "21", "09", "12", "42", "15")
+TP_BASICA   <- c("01", "02", "45", "04", "36")
+
+classifica_complexidade <- function(tipo_cod, uti_neo, uti_ped) {
+  tipo_cod <- formatC(as.character(tipo_cod), width = 2, flag = "0")
+  uti <- (suppressWarnings(as.numeric(uti_neo)) %||% 0) > 0 |
+         (suppressWarnings(as.numeric(uti_ped)) %||% 0) > 0
+  uti[is.na(uti)] <- FALSE
+  out <- ifelse(is.na(tipo_cod) | tipo_cod == "NA", COMPLEX_NIVEIS[6],
+         ifelse(tipo_cod %in% TP_HOSPITAL & uti,  COMPLEX_NIVEIS[1],
+         ifelse(tipo_cod %in% TP_HOSPITAL,        COMPLEX_NIVEIS[2],
+         ifelse(tipo_cod %in% TP_URGENCIA,        COMPLEX_NIVEIS[3],
+         ifelse(tipo_cod %in% TP_BASICA,          COMPLEX_NIVEIS[4],
+                                                  COMPLEX_NIVEIS[5])))))
+  factor(out, levels = COMPLEX_NIVEIS)
+}
+
+# Vínculo com o SUS, pelo que a própria tabela mostra: teve AIH de 0–6 anos
+# no período; não teve, mas tem leito SUS cadastrado; ou não tem leito SUS
+# (hospital não conveniado — a internação existe, mas não gera AIH).
+VINC_NIVEIS <- c("Com AIH de 0–6 anos no período",
+                 "Leito SUS cadastrado, sem AIH de 0–6 anos",
+                 "Sem leito SUS (não conveniado)")
+VINC_COR <- c("#004B87", "#F4A261", "#C0392B"); names(VINC_COR) <- VINC_NIVEIS
+
+if (CNES_TIPO_REAL) {
+  .num <- function(col) if (col %in% names(cnes_tipo))
+    suppressWarnings(as.numeric(cnes_tipo[[col]])) else rep(NA_real_, nrow(cnes_tipo))
+  for (.c in c("leitos_total", "leitos_sus", "leitos_uti_neo", "leitos_uti_ped",
+               "sih_total", "link_obitos", "link_pareados", "sim_obitos_sem_par"))
+    cnes_tipo[[.c]] <- .num(.c)
+  cnes_tipo$complexidade <- if ("tipo_cod" %in% names(cnes_tipo))
+    classifica_complexidade(cnes_tipo$tipo_cod, cnes_tipo$leitos_uti_neo,
+                            cnes_tipo$leitos_uti_ped)
+  else factor(COMPLEX_NIVEIS[5], levels = COMPLEX_NIVEIS)
+  cnes_tipo$vinculo_sus <- factor(ifelse(
+    (cnes_tipo$sih_total %||% 0) > 0 & !is.na(cnes_tipo$sih_total), VINC_NIVEIS[1],
+    ifelse((cnes_tipo$leitos_sus %||% 0) > 0 & !is.na(cnes_tipo$leitos_sus),
+           VINC_NIVEIS[2], VINC_NIVEIS[3])), levels = VINC_NIVEIS)
+  rm(.num, .c)
+}
+# As colunas de volume (SIH, linkage, óbitos sem par) só existem na tabela
+# completa do 10_cnes_sia.R; o cnes_tipo.csv antigo não as tem.
+CNES_VOL_REAL <- CNES_TIPO_REAL &&
+  all(c("link_obitos", "link_pareados", "sim_obitos_sem_par") %in% names(cnes_tipo)) &&
+  any(!is.na(cnes_tipo$sim_obitos_sem_par))
+
 TRANS_NIVEIS <- c(
   "Mesmo CID, específico",
   "Específico → Específico, mesmo sistema",
@@ -1917,6 +2035,23 @@ banner_sem_v3 <- function(o_que = c("link", "qual", "baixa")) {
 
 MSG_SEM_LINKAGE <- paste0("Sem dados: gere ", TRAJ_ARQ, " com 00_link_sih_sim_v3.R")
 MSG_SEM_POP <- paste0("Sem dados: gere ", POP_ARQ, " com 01_baixar_populacao.R")
+
+MSG_SEM_CASCATA <- paste0("Sem dados: gere ", CASC_ARQ,
+                          " rodando 00_link_sih_sim_v3.R na versão 3.3")
+banner_sem_cascata <- function() {
+  if (CASC_REAL) return(NULL)
+  div(class = "nodata-banner",
+      bs_icon("database-exclamation"), tags$b(" CASCATA NÃO DISPONÍVEL. "),
+      "A leitura por estágio depende de ", tags$code(CASC_ARQ),
+      ", gravado pela versão 3.3 do ", tags$code("00_link_sih_sim_v3.R"),
+      ". Enquanto o script não for rodado, o painel mostra o gráfico anterior ",
+      "(barras sobre a base inteira). ",
+      tags$b("A cascata não é reconstruída por suposição."))
+}
+
+MSG_SEM_LOCOCOR <- "Quebra por local de ocorrência disponível a partir da v3.3"
+CAPT_REAL <- QUAL_REAL && !is.null(qual$captura_lococor) &&
+  is.data.frame(qual$captura_lococor) && nrow(qual$captura_lococor) > 0
 
 # ----------------------------------------------------------------------------
 # 3b. HELPERS — CID DETALHADO, CAPÍTULOS, CONCENTRAÇÃO E METAS ODS/IPEA
@@ -2377,6 +2512,100 @@ plot_trajetoria <- function(d) {
     clean_plotly(legend_pos = "none")
 }
 
+# ----------------------------------------------------------------------------
+# CASCATA DE ESTÁGIOS (v3.3)
+#
+# O gráfico antigo empilhava T₀, T₁ e T₂ como barras sobre a mesma base, o que
+# lia como funil — mas T₁ e T₂ não são subconjuntos de T₀ no mesmo sentido: a
+# internação não "avança" por etapas, ela termina num desfecho. A leitura certa
+# é por estágio: a primeira AIH do episódio termina em alta, óbito ou
+# transferência; quem foi transferido abre um segundo estágio, que termina de
+# novo em alta, óbito ou transferência; e assim por diante.
+# ----------------------------------------------------------------------------
+CASC_MAX_EST <- 4L   # estágios exibidos; o resto entra em "5 ou mais"
+
+casc_filtrada <- function(y0, y1, faixa = "Todas as faixas", regiao = "Brasil") {
+  if (!CASC_REAL) return(NULL)
+  d <- casc_raw[casc_raw$ano >= y0 & casc_raw$ano <= y1, ]
+  if (!identical(faixa, "Todas as faixas")) d <- d[d$faixa == faixa, ]
+  if (!identical(regiao, "Brasil"))         d <- d[d$regiao == regiao, ]
+  if (!nrow(d)) return(d)
+  d$est_lab <- ifelse(d$estagio >= CASC_MAX_EST + 1L,
+                      paste0(CASC_MAX_EST + 1L, " ou mais"),
+                      as.character(d$estagio))
+  d
+}
+
+# Quem chega a cada estágio e como esse estágio termina.
+casc_resumo <- function(d, so_transferidos = FALSE) {
+  if (is.null(d) || !nrow(d)) return(NULL)
+  if (so_transferidos) d <- d[d$desfecho_ant %in% "Transferência", ]
+  if (!nrow(d)) return(NULL)
+  r <- d %>% group_by(estagio, est_lab, desfecho) %>%
+    summarise(n = sum(n), .groups = "drop") %>%
+    group_by(estagio, est_lab) %>%
+    mutate(chegaram = sum(n), pct = 100 * n / chegaram) %>%
+    ungroup() %>%
+    mutate(desfecho = factor(desfecho, levels = DESF_NIVEIS)) %>%
+    arrange(estagio, desfecho)
+  r
+}
+
+# Barras empilhadas: uma linha por estágio, 100% = quem chegou àquele estágio.
+plot_cascata <- function(d, modo = c("pct", "n"), so_transferidos = FALSE) {
+  modo <- match.arg(modo)
+  if (!CASC_REAL) return(empty_plot(MSG_SEM_CASCATA))
+  r <- casc_resumo(d, so_transferidos)
+  if (is.null(r)) return(empty_plot("Sem registros no recorte"))
+  labs <- unique(r[order(r$estagio), c("estagio", "est_lab", "chegaram")])
+  labs$rot <- paste0("Estágio ", labs$est_lab, "  ·  n = ", fmt_br(labs$chegaram))
+  r <- merge(r, labs[, c("estagio", "rot")], by = "estagio")
+  r$rot <- factor(r$rot, levels = rev(labs$rot))
+  r$x <- if (modo == "pct") r$pct else r$n
+  # O hover vai como texto pronto, uma string por barra. Com `color =` o
+  # plotly quebra os dados em uma série por desfecho; um `customdata`
+  # matricial não é fatiado junto e estoura no build ("columns must have
+  # compatible sizes"). Texto por linha atravessa a divisão intacto.
+  r$hov <- paste0("<b>Estágio ", r$est_lab, "</b><br>",
+                  r$desfecho, ": ", fmt_br(r$n), " AIHs<br>",
+                  format(round(r$pct, 1), decimal.mark = ",", nsmall = 1),
+                  "% de quem chegou ao estágio<br>",
+                  "chegaram ao estágio: ", fmt_br(r$chegaram))
+  plot_ly(r, x = ~x, y = ~rot, color = ~desfecho, colors = DESF_COR,
+          type = "bar", orientation = "h",
+          marker = list(line = list(color = "white", width = 1)),
+          text = ~ifelse(pct >= 6,
+                         paste0(format(round(pct, 1), decimal.mark = ",",
+                                       nsmall = 1), "%"), ""),
+          textposition = "inside", insidetextanchor = "middle",
+          textfont = list(size = 11, color = "white"),
+          hovertext = ~hov, hoverinfo = "text") %>%
+    layout(barmode = "stack",
+           xaxis = list(title = if (modo == "pct")
+             "% de quem chegou ao estágio" else "AIHs no estágio",
+             ticksuffix = if (modo == "pct") "%" else "",
+             range = if (modo == "pct") c(0, 100) else NULL),
+           yaxis = list(title = "", automargin = TRUE,
+                        tickfont = list(size = 11)),
+           margin = list(l = 10, r = 20, t = 10, b = 50)) %>%
+    clean_plotly()
+}
+
+# Tabela que abre a cascata por desfecho de origem — é a leitura pedida na
+# revisão: "T₁ transferência abre uma nova subpopulação".
+tab_cascata <- function(d) {
+  if (is.null(d) || !nrow(d)) return(NULL)
+  d %>%
+    group_by(`Estágio` = est_lab,
+             `Desfecho do estágio anterior` = desfecho_ant,
+             `Desfecho deste estágio` = desfecho) %>%
+    summarise(n = sum(n), .groups = "drop_last") %>%
+    mutate(`% da subpopulação` = 100 * n / sum(n)) %>%
+    ungroup() %>%
+    arrange(`Estágio`, `Desfecho do estágio anterior`, dplyr::desc(n)) %>%
+    as.data.frame()
+}
+
 # Qualidade de preenchimento: % de campo ausente e % de CID genérico por região.
 qualidade_regiao <- function(d) {
   if (nrow(d) == 0) return(NULL)
@@ -2457,6 +2686,26 @@ reconciliacao <- function() {
   # execução anterior, derivar o que dá dos números disponíveis.
   if (!is.null(qual$trilha_sim) && !is.null(qual$trilha_sih)) {
     sim <- qual$trilha_sim; sih <- qual$trilha_sih
+    # O script grava "alvo capturado" como nrow(lk) — EPISÓDIOS do SIH — e
+    # o subtrai de um total de ÓBITOS. Um mesmo óbito pareado com dois
+    # episódios (reinternação) conta duas vezes ali. Quando a captura por
+    # local de ocorrência existe (v3.3), ela conta óbitos distintos e é ela
+    # que fecha a trilha do SIM.
+    cl <- nc_conta()
+    if (!is.null(cl)) {
+      i_par <- grep("capturado na AIH", sim$etapa)
+      i_nao <- grep("não capturado", sim$etapa)
+      if (length(i_par)) {
+        sim$etapa[i_par[1]] <- "Alvo capturado na AIH (óbitos distintos pareados)"
+        sim$n[i_par[1]] <- cl$pareados_distintos
+      }
+      if (length(i_nao)) sim$n[i_nao[1]] <- cl$nao_capturados
+      if (!is.na(cl$episodios_pareados))
+        sih <- rbind(sih, data.frame(
+          etapa = "— óbitos do SIM com mais de um episódio pareado",
+          n = cl$episodios_pareados - cl$pareados_distintos,
+          unidade = sih$unidade[1], stringsAsFactors = FALSE))
+    }
   } else {
     f <- qual$funil
     g <- function(rx) { v <- f$n[grepl(rx, f$etapa)]; if (length(v)) v[1] else NA_real_ }
@@ -2517,6 +2766,259 @@ tab_reconciliacao <- function() {
                n = rc$sim$n, Unidade = "\u00f3bito (Declara\u00e7\u00e3o de \u00d3bito)"),
     data.frame(Trilha = "SIH \u2014 interna\u00e7\u00f5es", Etapa = rc$sih$etapa,
                n = rc$sih$n, Unidade = "epis\u00f3dio (AIHs encadeadas)"))
+}
+
+# ----------------------------------------------------------------------------
+# v3.3 · POR QUE O ALVO NÃO É TODO CAPTURÁVEL
+#
+# Foi o ponto levantado na revisão: o salto de 374.604 para o número de
+# pareados parecia grande demais. Ele é grande — mas não é, em boa parte,
+# falha de pareamento. O alvo da Etapa 1 junta LOCOCOR 1 (hospital) e
+# LOCOCOR 2 (outro estabelecimento de saúde: UPA, pronto atendimento, UBS).
+# Um óbito em LOCOCOR 2 é atendimento ambulatorial e não gera AIH nenhuma:
+# não existe registro no SIH para parear. Contá-lo no denominador rebaixa a
+# cobertura sem que haja erro no linkage. A conferência desse grupo é no SIA,
+# não no SIH.
+# ----------------------------------------------------------------------------
+LOCOCOR_NOME <- c("1" = "Hospital",
+                  "2" = "Outro estabelecimento de saúde",
+                  "3" = "Domicílio", "4" = "Via pública",
+                  "5" = "Outros", "6" = "Aldeia indígena",
+                  "9" = "Ignorado")
+lococor_nome <- function(x) {
+  v <- unname(LOCOCOR_NOME[as.character(x)])
+  ifelse(is.na(v), "Não informado", v)
+}
+
+captura_lococor <- function() {
+  if (!CAPT_REAL) return(NULL)
+  d <- as.data.frame(qual$captura_lococor)
+  if (!"local" %in% names(d)) d$local <- lococor_nome(d$local_ocor)
+  if (!"nao_pareados" %in% names(d)) d$nao_pareados <- d$alvo - d$pareados
+  d[order(-d$alvo), ]
+}
+
+# Conta única para os KPIs da aba "Óbitos não capturados" — um só lugar em
+# que numerador e denominador são definidos, para o painel não mostrar dois
+# totais diferentes para a mesma coisa.
+#   alvo               = óbitos do SIM em LOCOCOR 1 ou 2 (unidade: óbito)
+#   pareados_distintos = óbitos do SIM com pelo menos uma AIH pareada
+#   nao_capturados     = alvo − pareados_distintos
+#   episodios_pareados = episódios do SIH pareados (nrow do linkage) — maior
+#                        que pareados_distintos porque um óbito pode ter
+#                        sido pareado a dois episódios (reinternação)
+nc_conta <- function() {
+  d <- captura_lococor()
+  if (is.null(d) || !nrow(d)) return(NULL)
+  l1 <- d[as.character(d$local_ocor) == "1", ]
+  l2 <- d[as.character(d$local_ocor) == "2", ]
+  ep <- NA_real_
+  if (!is.null(qual$funil)) {
+    v <- qual$funil$n[grepl("^Pareados", qual$funil$etapa)]
+    if (length(v)) ep <- v[1]
+  }
+  list(alvo = sum(d$alvo, na.rm = TRUE),
+       pareados_distintos = sum(d$pareados, na.rm = TRUE),
+       nao_capturados = sum(d$nao_pareados, na.rm = TRUE),
+       episodios_pareados = ep,
+       hosp_alvo = if (nrow(l1)) l1$alvo[1] else NA_real_,
+       hosp_par  = if (nrow(l1)) l1$pareados[1] else NA_real_,
+       outro_alvo = if (nrow(l2)) l2$alvo[1] else NA_real_,
+       outro_par  = if (nrow(l2)) l2$pareados[1] else NA_real_)
+}
+
+# "185.017 ÷ 363.680" — numerador e denominador escritos por extenso.
+fmt_razao <- function(num, den) {
+  if (is.na(num) || is.na(den) || den == 0) return("—")
+  paste0(fmt_br(num), " ÷ ", fmt_br(den))
+}
+
+plot_captura_lococor <- function() {
+  if (!CAPT_REAL) return(empty_plot(MSG_SEM_LOCOCOR))
+  d <- captura_lococor()
+  if (is.null(d) || !nrow(d)) return(empty_plot(MSG_SEM_LOCOCOR))
+  d <- d[order(d$alvo), ]
+  d$rot <- factor(d$local, levels = d$local)
+  plot_ly(d) %>%
+    add_bars(x = ~pareados, y = ~rot, orientation = "h",
+             name = "Pareado com uma AIH",
+             marker = list(color = pal$primary,
+                           line = list(color = "white", width = 1)),
+             hovertemplate = "<b>%{y}</b><br>pareados: %{x:,.0f}<extra></extra>") %>%
+    add_bars(x = ~nao_pareados, y = ~rot, orientation = "h",
+             name = "Sem par no SIH",
+             marker = list(color = pal$alert,
+                           line = list(color = "white", width = 1)),
+             hovertemplate = "<b>%{y}</b><br>sem par: %{x:,.0f}<extra></extra>") %>%
+    layout(barmode = "stack",
+           xaxis = list(title = "Óbitos do alvo (SIM)"),
+           yaxis = list(title = "", automargin = TRUE,
+                        tickfont = list(size = 11)),
+           margin = list(l = 10, r = 20, t = 10, b = 50)) %>%
+    clean_plotly()
+}
+
+# Tabela dos estabelecimentos que mais concentram óbito sem par no SIH.
+# Quando `cnes_tipo.csv` existe, o tipo de unidade aparece ao lado — é o que
+# transforma "CNES 2078015" em "UPA 24h" e fecha o argumento.
+tab_nao_capturados <- function() {
+  if (!QUAL_REAL || is.null(qual$top_cnes_nao_capturado)) return(NULL)
+  d <- as.data.frame(qual$top_cnes_nao_capturado)
+  if (!nrow(d)) return(NULL)
+  d$Local <- lococor_nome(d$local_ocor)
+  if (CNES_TIPO_REAL) {
+    cols <- intersect(c("codestab", "nome", "tipo_unidade", "complexidade",
+                        "vinculo_sus", "leitos_uti_neo", "leitos_uti_ped"),
+                      names(cnes_tipo))
+    d <- merge(d, cnes_tipo[, cols], by = "codestab", all.x = TRUE, sort = FALSE)
+    d$tipo_unidade[is.na(d$tipo_unidade)] <- "Não localizado no CNES"
+    d$complexidade <- as.character(d$complexidade)
+    d$complexidade[is.na(d$complexidade)] <- COMPLEX_NIVEIS[6]
+  } else {
+    d$tipo_unidade <- "— (rode 10_cnes_sia.R)"
+    d$complexidade <- "—"
+  }
+  d <- d[order(-d$obitos_nao_capturados), ]
+  out <- data.frame(
+    CNES = d$codestab,
+    Estabelecimento = if ("nome" %in% names(d)) d$nome else NA_character_,
+    UF = if ("uf" %in% names(d)) d$uf else NA_character_,
+    `Tipo de unidade` = d$tipo_unidade,
+    `Nível de complexidade` = d$complexidade,
+    `Vínculo SUS` = if ("vinculo_sus" %in% names(d)) as.character(d$vinculo_sus) else NA_character_,
+    `Local de ocorrência (DO)` = d$Local,
+    `Óbitos do SIM sem par no SIH` = d$obitos_nao_capturados,
+    check.names = FALSE, stringsAsFactors = FALSE)
+  out[, colSums(is.na(out)) < nrow(out)]
+}
+
+# ----------------------------------------------------------------------------
+# Separação por nível de complexidade (terciário × não terciário)
+#
+# Os dois lados da conta, por tipo de estabelecimento:
+#   lado SIH — episódios com desfecho óbito e quantos acharam a DO;
+#   lado SIM — óbitos do alvo sem par, e quantos deles ocorreram em unidade
+#              que não teve NENHUMA AIH de 0–6 anos no período (internação
+#              existiu, mas fora do SUS — não há o que parear).
+# Tudo vem da tabela por CNES do 10_cnes_sia.R; nada é estimado.
+# ----------------------------------------------------------------------------
+tab_complexidade <- function() {
+  if (!CNES_VOL_REAL) return(NULL)
+  d <- cnes_tipo
+  d <- d[(d$link_obitos %||% 0) > 0 | (d$sim_obitos_sem_par %||% 0) > 0, ]
+  d$link_obitos[is.na(d$link_obitos)] <- 0
+  d$link_pareados[is.na(d$link_pareados)] <- 0
+  d$sim_obitos_sem_par[is.na(d$sim_obitos_sem_par)] <- 0
+  t <- d %>%
+    group_by(complexidade, .drop = FALSE) %>%
+    summarise(
+      `Estabelecimentos` = dplyr::n(),
+      `Episódios SIH com óbito` = sum(link_obitos),
+      `Pareados com a DO` = sum(link_pareados),
+      `Óbitos do SIM sem par` = sum(sim_obitos_sem_par),
+      `— em unidade sem AIH 0–6 no período` =
+        sum(sim_obitos_sem_par[vinculo_sus != VINC_NIVEIS[1]]),
+      .groups = "drop") %>%
+    as.data.frame()
+  # Resíduo: óbitos sem par cujo CNES da DO não está na tabela de
+  # estabelecimentos (código inexistente no cadastro do período). Entra na
+  # última linha para a coluna fechar com o KPI "Óbitos do SIM sem par".
+  c0 <- nc_conta()
+  i6 <- which(as.character(t$complexidade) == COMPLEX_NIVEIS[6])
+  if (!is.null(c0) && length(i6)) {
+    resto <- c0$nao_capturados - sum(t$`Óbitos do SIM sem par`[-i6])
+    if (isTRUE(resto > 0)) t$`Óbitos do SIM sem par`[i6] <- resto
+  }
+  t %>%
+    mutate(`% pareado (lado SIH)` = ifelse(`Episódios SIH com óbito` > 0,
+                                          100 * `Pareados com a DO` / `Episódios SIH com óbito`,
+                                          NA_real_),
+           `% do sem par` = 100 * `Óbitos do SIM sem par` /
+             sum(`Óbitos do SIM sem par`)) %>%
+    rename(`Nível de complexidade` = complexidade) %>%
+    mutate(`Nível de complexidade` = as.character(`Nível de complexidade`)) %>%
+    dplyr::select(`Nível de complexidade`, Estabelecimentos,
+                  `Episódios SIH com óbito`, `Pareados com a DO`, `% pareado (lado SIH)`,
+                  `Óbitos do SIM sem par`, `% do sem par`,
+                  `— em unidade sem AIH 0–6 no período`) %>%
+    as.data.frame()
+}
+
+plot_complexidade <- function() {
+  if (!CNES_VOL_REAL) return(empty_plot(MSG_SEM_CNES_VOL))
+  d <- cnes_tipo
+  d <- d[(d$sim_obitos_sem_par %||% 0) > 0, ]
+  if (!nrow(d)) return(empty_plot(MSG_SEM_CNES_VOL))
+  a <- d %>% group_by(complexidade, vinculo_sus, .drop = FALSE) %>%
+    summarise(n = sum(sim_obitos_sem_par, na.rm = TRUE), .groups = "drop") %>%
+    filter(n > 0)
+  tot <- a %>% group_by(complexidade) %>% summarise(t = sum(n), .groups = "drop")
+  a <- left_join(a, tot, by = "complexidade")
+  a$rot <- factor(as.character(a$complexidade), levels = rev(COMPLEX_NIVEIS))
+  a$txt <- paste0("<b>", a$complexidade, "</b><br>", a$vinculo_sus, "<br>",
+                  fmt_br(a$n), " óbitos sem par (",
+                  fmt_pct(a$n / a$t), " do nível)")
+  p <- plot_ly()
+  for (lv in VINC_NIVEIS) {
+    s <- a[as.character(a$vinculo_sus) == lv, ]
+    if (!nrow(s)) next
+    p <- add_bars(p, data = s, x = ~n, y = ~rot, orientation = "h", name = lv,
+                  marker = list(color = VINC_COR[[lv]],
+                                line = list(color = "white", width = 1)),
+                  text = ~txt, hoverinfo = "text", textposition = "none")
+  }
+  p %>% layout(barmode = "stack",
+               xaxis = list(title = "Óbitos do SIM sem par no SIH"),
+               yaxis = list(title = "", automargin = TRUE, tickfont = list(size = 11)),
+               legend = list(orientation = "h", y = -0.25),
+               margin = list(l = 10, r = 20, t = 10, b = 60)) %>%
+    clean_plotly()
+}
+MSG_SEM_CNES_VOL <- "Separação por complexidade depende de estabelecimentos_dash.csv (10_cnes_sia.R, PARTE 2)"
+
+# Cobertura por ano, com uma linha para cada local de ocorrência. Se as duas
+# linhas caminham juntas, o problema é de pareamento; se a de "hospital" é
+# alta e a de "outro estabelecimento" é rasteira, o problema é de universo.
+plot_captura_lococor_ano <- function() {
+  if (!QUAL_REAL || is.null(qual$captura_lococor_ano))
+    return(empty_plot(MSG_SEM_LOCOCOR))
+  d <- as.data.frame(qual$captura_lococor_ano)
+  d <- d[!is.na(d$ano) & d$local_ocor %in% c("1", "2"), ]
+  if (!nrow(d)) return(empty_plot(MSG_SEM_LOCOCOR))
+  d$local <- lococor_nome(d$local_ocor)
+  p <- plot_ly()
+  for (lv in unique(d$local)) {
+    s <- d[d$local == lv, ]
+    s <- s[order(s$ano), ]
+    p <- add_lines(p, data = s, x = ~ano, y = ~pct_capturado, name = lv,
+                   line = list(width = 3,
+                               color = if (grepl("^Hospital", lv))
+                                 pal$primary else pal$alert),
+                   marker = list(size = 7),
+                   hovertemplate = paste0("<b>%{fullData.name}</b><br>",
+                                          "%{x}: %{y:.1f}% do alvo<br>",
+                                          "alvo: %{customdata:,.0f}<extra></extra>"),
+                   customdata = ~alvo)
+  }
+  p %>% layout(xaxis = list(title = "Ano do óbito"),
+               yaxis = list(title = "% do alvo capturado na AIH",
+                            ticksuffix = "%", rangemode = "tozero")) %>%
+    clean_plotly()
+}
+
+# Quanto do não capturado sequer traz CNES na Declaração de Óbito.
+resumo_sem_cnes <- function() {
+  if (!QUAL_REAL || is.null(qual$nao_capturado_sem_cnes)) return(NULL)
+  d <- as.data.frame(qual$nao_capturado_sem_cnes)
+  if (!nrow(d)) return(NULL)
+  d$Local <- lococor_nome(d$local_ocor)
+  d %>% group_by(Local) %>%
+    summarise(`Com CNES na DO` = sum(n[tem_cnes], na.rm = TRUE),
+              `Sem CNES na DO` = sum(n[!tem_cnes], na.rm = TRUE),
+              .groups = "drop") %>%
+    mutate(Total = `Com CNES na DO` + `Sem CNES na DO`,
+           `% sem CNES` = 100 * `Sem CNES na DO` / Total) %>%
+    arrange(dplyr::desc(Total)) %>% as.data.frame()
 }
 
 # Cobertura por ano: barras exato × probabilístico + linha de cobertura do alvo.
@@ -2664,24 +3166,163 @@ desc_resumo_uf <- function(d) {
 }
 
 # ---- Guia de CIDs ----------------------------------------------------------
-guia_cids_tab <- function(d) {
-  base <- cid_dic[, c("cid", "nome", "grupo", "generico", "nota")]
-  cl <- cid_classify(base$cid)
-  base$sistema  <- cl$sistema
-  base$capitulo <- cl$cap
-  base$especificidade <- ifelse(base$generico == 1, "Genérico / mal definido",
-                                "Específico")
+# A versão anterior listava apenas os 132 códigos do dicionário curado. O
+# efeito colateral era grave para a revisão: um código com muito volume que a
+# equipe ainda não tinha revisado simplesmente não aparecia na tela — não dava
+# para saber o que falta revisar nem quanto do volume já está coberto.
+#
+# `guia_universo()` monta o universo observado no linkage (entrada e óbito),
+# classifica tudo pelo mesmo motor e marca quem está e quem não está no
+# dicionário. Nenhuma contagem é inventada: código sem ocorrência aparece com
+# zero, e sem linkage carregado as colunas de volume ficam vazias.
+guia_universo <- function(d) {
+  obs_e <- if (TRAJ_REAL && nrow(d)) table(d$cid_entrada) else table(character(0))
+  obs_o <- if (TRAJ_REAL && nrow(d)) table(d$cid_obito[!is.na(d$cid_obito)]) else
+    table(character(0))
+  cods <- sort(unique(c(cid_dic$cid, names(obs_e), names(obs_o))))
+  cods <- cods[!is.na(cods) & nzchar(cods)]
+  if (!length(cods)) return(NULL)
+
+  cl <- cid_classify(cods)
+  no_dic <- cods %in% cid_dic$cid
+  i <- match(cods, cid_dic$cid)
+
+  base <- data.frame(
+    cid            = cods,
+    nome           = cl$nome,
+    sistema        = cl$sistema,
+    grupo          = cl$grupo,
+    capitulo       = cl$cap,
+    cap_nome       = cl$cap_nome,
+    especificidade = cl$especificidade,
+    no_dicionario  = ifelse(no_dic, "No dicionário curado", "Fora do dicionário"),
+    nota           = ifelse(no_dic, cid_dic$nota[i], ""),
+    stringsAsFactors = FALSE)
+  base$nota[is.na(base$nota)] <- ""
+
   if (TRAJ_REAL && nrow(d)) {
-    ne <- table(d$cid_entrada)
-    no <- table(d$cid_obito[!is.na(d$cid_obito)])
-    base$n_entrada <- as.integer(ne[base$cid]); base$n_entrada[is.na(base$n_entrada)] <- 0L
-    base$n_obito   <- as.integer(no[base$cid]); base$n_obito[is.na(base$n_obito)]     <- 0L
+    base$n_entrada <- as.integer(obs_e[base$cid]); base$n_entrada[is.na(base$n_entrada)] <- 0L
+    base$n_obito   <- as.integer(obs_o[base$cid]); base$n_obito[is.na(base$n_obito)]     <- 0L
   } else {
     base$n_entrada <- NA_integer_; base$n_obito <- NA_integer_
   }
-  base[order(-base$n_obito, base$cid),
-       c("cid", "nome", "sistema", "grupo", "capitulo", "especificidade",
-         "n_entrada", "n_obito", "nota")]
+  # Razão óbito/entrada: quanto o código "sobrevive" da entrada ao óbito.
+  # Só faz sentido quando há entrada — com denominador zero fica NA, e não 0,
+  # para não sugerir ausência de risco onde há ausência de dado.
+  base$razao <- ifelse(is.na(base$n_entrada) | base$n_entrada == 0, NA_real_,
+                       base$n_obito / base$n_entrada)
+  base[order(-base$n_obito, -base$n_entrada, base$cid), ]
+}
+
+# Agrega o universo no nível pedido. "Código" devolve a linha original.
+guia_agregado <- function(u, nivel = c("cid", "grupo", "sistema", "capitulo")) {
+  nivel <- match.arg(nivel)
+  if (is.null(u) || !nrow(u)) return(NULL)
+  if (nivel == "cid") return(u)
+  chave <- switch(nivel, grupo = "grupo", sistema = "sistema",
+                  capitulo = "cap_nome")
+  u %>% group_by(.chave = .data[[chave]]) %>%
+    summarise(
+      `Códigos` = dplyr::n(),
+      `No dicionário` = sum(no_dicionario == "No dicionário curado"),
+      `Genéricos` = sum(especificidade == "Genérico / mal definido"),
+      n_entrada = if (all(is.na(n_entrada))) NA_integer_ else
+        sum(n_entrada, na.rm = TRUE),
+      n_obito = if (all(is.na(n_obito))) NA_integer_ else
+        sum(n_obito, na.rm = TRUE),
+      .groups = "drop") %>%
+    mutate(razao = ifelse(is.na(n_entrada) | n_entrada == 0, NA_real_,
+                          n_obito / n_entrada)) %>%
+    arrange(dplyr::desc(n_obito), dplyr::desc(n_entrada)) %>%
+    as.data.frame()
+}
+
+# Quanto do volume observado o dicionário curado já cobre — a pergunta que
+# decide se a revisão está perto do fim ou no começo.
+guia_cobertura <- function(u) {
+  if (is.null(u) || !nrow(u) || all(is.na(u$n_obito)))
+    return(list(pct_obito = NA_real_, pct_entrada = NA_real_,
+                fora = NA_integer_, fora_obitos = NA_integer_))
+  dentro <- u$no_dicionario == "No dicionário curado"
+  list(
+    pct_obito   = sum(u$n_obito[dentro],   na.rm = TRUE) / max(1, sum(u$n_obito,   na.rm = TRUE)),
+    pct_entrada = sum(u$n_entrada[dentro], na.rm = TRUE) / max(1, sum(u$n_entrada, na.rm = TRUE)),
+    fora        = sum(!dentro & (u$n_obito > 0 | u$n_entrada > 0), na.rm = TRUE),
+    fora_obitos = sum(u$n_obito[!dentro], na.rm = TRUE))
+}
+
+# Top códigos por volume de óbito, coloridos pelo sistema, com o contorno
+# marcando quem ainda não passou pela revisão da equipe.
+plot_guia_top <- function(u, topn = 20, so_fora = FALSE) {
+  if (is.null(u) || !nrow(u)) return(empty_plot(MSG_SEM_LINKAGE))
+  if (all(is.na(u$n_obito))) return(empty_plot(MSG_SEM_LINKAGE))
+  r <- if (so_fora) u[u$no_dicionario == "Fora do dicionário", ] else u
+  r <- r[!is.na(r$n_obito) & r$n_obito > 0, ]
+  if (!nrow(r)) return(empty_plot("Nenhum código com óbito no recorte"))
+  r <- r[order(-r$n_obito), ]
+  if (nrow(r) > topn) r <- r[seq_len(topn), ]
+  r <- r[order(r$n_obito), ]
+  r$lbl <- factor(paste0(r$cid, " · ", substr(r$nome, 1, 46)),
+                  levels = paste0(r$cid, " · ", substr(r$nome, 1, 46)))
+  plot_ly(r, x = ~n_obito, y = ~lbl, type = "bar", orientation = "h",
+          marker = list(color = cor_sistema(r$sistema),
+                        line = list(color = ifelse(
+                          r$no_dicionario == "Fora do dicionário",
+                          pal$alert, "white"), width = 2)),
+          text = ~fmt_br(n_obito), textposition = "outside",
+          textfont = list(size = 10, color = pal$dark),
+          hovertext = ~paste0("<b>", cid, " · ", nome, "</b><br>",
+                              "como causa de óbito: ", fmt_br(n_obito), "<br>",
+                              "como CID de entrada: ", fmt_br(n_entrada), "<br>",
+                              "sistema: ", sistema, "<br>",
+                              especificidade, " · ", no_dicionario),
+          hoverinfo = "text") %>%
+    layout(xaxis = list(title = "Óbitos (SIM) no linkage",
+                        range = c(0, max(r$n_obito, na.rm = TRUE) * 1.22)),
+           yaxis = list(title = "", automargin = TRUE,
+                        tickfont = list(size = 10))) %>%
+    clean_plotly(legend_pos = "none")
+}
+
+# Entrada × óbito: onde o código ganha ou perde peso entre as duas pontas.
+plot_guia_disp <- function(u, topn = 60) {
+  if (is.null(u) || !nrow(u) || all(is.na(u$n_obito)))
+    return(empty_plot(MSG_SEM_LINKAGE))
+  r <- u[!is.na(u$n_entrada) & !is.na(u$n_obito) &
+           (u$n_entrada > 0 | u$n_obito > 0), ]
+  if (!nrow(r)) return(empty_plot("Sem volume no recorte"))
+  r <- r[order(-(r$n_entrada + r$n_obito)), ]
+  if (nrow(r) > topn) r <- r[seq_len(topn), ]
+  lim <- max(c(r$n_entrada, r$n_obito), na.rm = TRUE)
+  plot_ly(r, x = ~n_entrada, y = ~n_obito, type = "scatter", mode = "markers",
+          marker = list(size = 11, opacity = .82,
+                        color = cor_sistema(r$sistema),
+                        line = list(color = ifelse(
+                          r$especificidade == "Genérico / mal definido",
+                          pal$alert, "white"), width = 2)),
+          hovertext = ~paste0("<b>", cid, " · ", nome, "</b><br>",
+                              "entrada (SIH): ", fmt_br(n_entrada), "<br>",
+                              "óbito (SIM): ", fmt_br(n_obito), "<br>",
+                              "razão óbito/entrada: ",
+                              ifelse(is.na(razao), "—",
+                                     format(round(razao, 2), decimal.mark = ",")),
+                              "<br>", especificidade),
+          hoverinfo = "text") %>%
+    add_lines(x = c(0, lim), y = c(0, lim), inherit = FALSE,
+              line = list(color = pal$gray_2, dash = "dot", width = 1.5),
+              hoverinfo = "skip", showlegend = FALSE) %>%
+    layout(xaxis = list(title = "n como CID de entrada (SIH)", type = "log"),
+           yaxis = list(title = "n como causa de óbito (SIM)", type = "log")) %>%
+    clean_plotly(legend_pos = "none")
+}
+
+# Mantida para compatibilidade: a tabela restrita ao dicionário curado.
+guia_cids_tab <- function(d) {
+  u <- guia_universo(d)
+  if (is.null(u)) return(NULL)
+  u <- u[u$no_dicionario == "No dicionário curado", ]
+  u[, c("cid", "nome", "sistema", "grupo", "capitulo", "especificidade",
+        "n_entrada", "n_obito", "nota")]
 }
 
 # ---- Etapa 5: internações sem óbito associado ------------------------------
@@ -2825,6 +3466,44 @@ custom_css <- "
               padding:8px 12px; margin-bottom:8px; font-size:.86rem; }
   .rev-item b { color:#004B87; }
   .kpi-note { font-size:.72rem; color:#6c757d; }
+  /* --- página inicial --- */
+  .hero { background:linear-gradient(135deg,#004B87 0%,#00699E 55%,#00A3A1 100%);
+          color:#FFF; border-radius:14px; padding:34px 38px 30px;
+          margin-bottom:22px; box-shadow:0 8px 26px rgba(0,75,135,.18); }
+  .hero h1 { font-size:1.85rem; font-weight:700; margin:0 0 6px;
+             letter-spacing:-.4px; }
+  .hero .sub { font-size:1rem; opacity:.92; max-width:70ch; line-height:1.55; }
+  .hero .meta { font-size:.8rem; opacity:.8; margin-top:16px; }
+  .hero .meta b { opacity:1; }
+  .num-strip { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:22px; }
+  .num-card { flex:1 1 190px; background:#FFF; border:1px solid #E3E7EE;
+              border-radius:10px; padding:16px 18px;
+              box-shadow:0 2px 10px rgba(0,0,0,.04); }
+  .num-card .rot { font-size:.74rem; text-transform:uppercase;
+                   letter-spacing:1.1px; color:#6c757d; font-weight:600; }
+  .num-card .val { font-size:1.72rem; font-weight:700; color:#004B87;
+                   line-height:1.25; margin-top:4px; }
+  .num-card .obs { font-size:.74rem; color:#8C95A3; margin-top:2px; }
+  .num-card.alerta .val { color:#C0392B; }
+  .num-card.verde  .val { color:#1E7B4F; }
+  .nav-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(268px,1fr));
+              gap:16px; }
+  .nav-card { display:block; width:100%; text-align:left; background:#FFF;
+              border:1px solid #E3E7EE; border-radius:10px; padding:18px 20px;
+              box-shadow:0 2px 10px rgba(0,0,0,.04); cursor:pointer;
+              transition:transform .12s ease, box-shadow .12s ease,
+                         border-color .12s ease; color:inherit; }
+  .nav-card:hover { transform:translateY(-2px); border-color:#00A3A1;
+                    box-shadow:0 8px 22px rgba(0,0,0,.09); color:inherit;
+                    text-decoration:none; }
+  .nav-card .tit { font-weight:700; color:#004B87; font-size:.98rem;
+                   margin-bottom:6px; }
+  .nav-card .desc { font-size:.82rem; color:#5D6D7E; line-height:1.5; }
+  .nav-card .tag { display:inline-block; font-size:.68rem; font-weight:700;
+                   text-transform:uppercase; letter-spacing:.9px;
+                   color:#00807E; background:#E6F6F6; border-radius:20px;
+                   padding:2px 10px; margin-bottom:8px; }
+  .nav-card .tag.novo { color:#7B241C; background:#FFECEA; }
 "
 
 # ----------------------------------------------------------------------------
@@ -2947,6 +3626,8 @@ ui <- page_navbar(
                    heading_font = font_google("Inter", local = FALSE),
                    "font-size-base" = "0.92rem") |> bs_add_rules(custom_css),
   underline = TRUE, fillable = FALSE,
+  # id nomeado para que os cartões da página inicial possam trocar de aba.
+  id = "nav_principal",
 
   sidebar = sidebar(
     title = tagList(bs_icon("sliders"), " Filtros Globais"),
@@ -2984,6 +3665,153 @@ ui <- page_navbar(
       tags$b("Período: "), PERIODO_FIXO, tags$br(),
       tags$b("Taxas: "), "por 1.000 nascidos vivos até 1 ano; ",
       "por 1.000 crianças da faixa de 1 a 6"))
+  ),
+
+  # ===================== INÍCIO =====================
+  # Página de entrada. Não repete análise: dá os números-âncora do período
+  # selecionado, explica em uma frase o que o painel responde e leva a pessoa
+  # para o bloco certo. Os cartões trocam de aba via nav_select.
+  nav_panel(
+    title = "Início", icon = bs_icon("house"),
+
+    div(class = "hero",
+        h1("Observatório de Saúde Infantil — Brasil"),
+        div(class = "sub",
+            "Mortalidade e internação de crianças de 0 a 6 anos no SUS, de ",
+            PERIODO_FIXO, ", a partir dos microdados do SIM e do SIH-SUS. ",
+            "O painel percorre o mesmo caminho da criança: entra pela ",
+            "internação, acompanha transferências e desfecho, e chega ao óbito ",
+            "com a causa registrada nas duas pontas."),
+        div(class = "meta",
+            bs_icon("calendar3"), tags$b(" Período selecionado: "),
+            textOutput("home_periodo", inline = TRUE),
+            tags$span(style = "margin:0 10px;opacity:.5;", "·"),
+            bs_icon("database"), tags$b(" Linkage: "),
+            if (LINK_V3) "fluxo em 5 etapas carregado"
+            else if (TRAJ_REAL) "carregado (versão anterior do fluxo)"
+            else "não incluído nesta publicação",
+            tags$span(style = "margin:0 10px;opacity:.5;", "·"),
+            bs_icon("bar-chart-steps"), tags$b(" Cascata por estágio: "),
+            if (CASC_REAL) "disponível" else "pendente de nova execução do script")),
+
+    div(class = "num-strip",
+        div(class = "num-card",
+            div(class = "rot", "Óbitos no período"),
+            div(class = "val", textOutput("home_obitos", inline = TRUE)),
+            div(class = "obs", "SIM · 0 a 6 anos")),
+        div(class = "num-card",
+            div(class = "rot", "Internações no período"),
+            div(class = "val", textOutput("home_internacoes", inline = TRUE)),
+            div(class = "obs", "SIH-SUS · 0 a 6 anos")),
+        div(class = "num-card verde",
+            div(class = "rot", "TMM5 Brasil"),
+            div(class = "val", textOutput("home_tmm5", inline = TRUE)),
+            div(class = "obs", "óbitos <5 anos por 1.000 nascidos vivos")),
+        div(class = "num-card",
+            div(class = "rot", "Óbitos pareados com o SIH"),
+            div(class = "val", textOutput("home_pareados", inline = TRUE)),
+            div(class = "obs", "encontro das duas bases")),
+        div(class = "num-card alerta",
+            div(class = "rot", "Causa nunca esclarecida"),
+            div(class = "val", textOutput("home_gen", inline = TRUE)),
+            div(class = "obs", "código genérico na entrada e no óbito"))),
+
+    div(style = "margin:6px 0 14px;",
+        tags$h5(style = "font-weight:700;color:#004B87;margin-bottom:4px;",
+                "Por onde começar"),
+        tags$p(class = "text-muted", style = "font-size:.86rem;margin-bottom:14px;",
+               "Cada cartão abre um bloco do painel. Os filtros da barra ",
+               "lateral — período, recorte etário e exclusão de códigos ",
+               "administrativos — valem para todos eles.")),
+
+    div(class = "nav-grid",
+        actionButton("ir_panorama", class = "nav-card", label = tagList(
+          div(class = "tag", "Visão geral"),
+          div(class = "tit", bs_icon("speedometer2"), " Panorama"),
+          div(class = "desc",
+              "Os indicadores consolidados, o mapa por UF, a série de óbitos ",
+              "e internações e o ranking de macrorregiões. É o retrato do ",
+              "período em uma tela."))),
+        actionButton("ir_faixa", class = "nav-card", label = tagList(
+          div(class = "tag", "Recorte etário"),
+          div(class = "tit", bs_icon("people"), " Por faixa etária"),
+          div(class = "desc",
+              "Neonatal, pós-neonatal e 1 a 6 anos em painéis separados. Cada ",
+              "faixa tem causas e denominadores próprios — misturá-las esconde ",
+              "os dois padrões."))),
+        actionButton("ir_sistemas", class = "nav-card", label = tagList(
+          div(class = "tag", "Causas"),
+          div(class = "tit", bs_icon("body-text"), " Sistemas & patologias"),
+          div(class = "desc",
+              "Todo CID-10 mapeado para capítulo, sistema do organismo e grupo ",
+              "de patologia, com os códigos mal definidos marcados."))),
+        actionButton("ir_qualidade", class = "nav-card", label = tagList(
+          div(class = "tag novo", "Revisado"),
+          div(class = "tit", bs_icon("arrow-left-right"), " Qualidade do linkage"),
+          div(class = "desc",
+              "Como o SIM e o SIH se encontram — e por que boa parte do alvo ",
+              "não é pareável. A captura aparece separada por local de ",
+              "ocorrência do óbito."))),
+        actionButton("ir_naocap", class = "nav-card", label = tagList(
+          div(class = "tag novo", "Novo"),
+          div(class = "tit", bs_icon("question-diamond"), " Óbitos não capturados"),
+          div(class = "desc",
+              "Onde estão os óbitos que ficaram fora do linkage, em que ",
+              "estabelecimentos se concentram e qual parcela só pode ser ",
+              "conferida na produção ambulatorial."))),
+        actionButton("ir_traj", class = "nav-card", label = tagList(
+          div(class = "tag novo", "Revisado"),
+          div(class = "tit", bs_icon("bar-chart-steps"), " Trajetória hospitalar"),
+          div(class = "desc",
+              "A internação lida por estágio: cada AIH termina em alta, óbito ",
+              "ou transferência, e a transferência abre um estágio novo com os ",
+              "mesmos três desfechos."))),
+        actionButton("ir_transicao", class = "nav-card", label = tagList(
+          div(class = "tag", "Diagnóstico"),
+          div(class = "tit", bs_icon("shuffle"), " Transição de CID"),
+          div(class = "desc",
+              "A criança entra com um diagnóstico e morre com outro. Ganho, ",
+              "perda e ausência de esclarecimento diagnóstico, por região."))),
+        actionButton("ir_guia", class = "nav-card", label = tagList(
+          div(class = "tag novo", "Revisado"),
+          div(class = "tit", bs_icon("journal-medical"), " Guia de CIDs"),
+          div(class = "desc",
+              "Todo código observado no linkage, com sistema, grupo, ",
+              "especificidade e a razão óbito/entrada — e o que ainda falta ",
+              "revisar."))),
+        actionButton("ir_metas", class = "nav-card", label = tagList(
+          div(class = "tag", "Metas"),
+          div(class = "tit", bs_icon("bullseye"), " Metas ODS/IPEA"),
+          div(class = "desc",
+              "A TMM5 do indicador 3.2.1 e a distância até a meta, no ",
+              "denominador definido pela convenção internacional."))),
+        actionButton("ir_metodo", class = "nav-card", label = tagList(
+          div(class = "tag", "Como ler"),
+          div(class = "tit", bs_icon("journal-text"), " Metodologia"),
+          div(class = "desc",
+              "Fontes, denominadores, regras de codificação e o que cada selo ",
+              "de período significa. Leia antes de citar um número.")))),
+
+    div(style = "margin-top:24px;",
+        card(card_header("O que este painel não faz"),
+             div(style = "padding:14px 18px;",
+                 tags$p(style = "margin-bottom:8px;",
+                        tags$b("Não estima e não simula. "),
+                        "Todo número vem de microdado do SIM, do SIH-SUS, do ",
+                        "SINASC ou da projeção populacional do IBGE. Quando um ",
+                        "arquivo não está carregado, o painel correspondente ",
+                        "fica vazio e diz qual script gera o dado — nunca ",
+                        "preenche a lacuna com estimativa."),
+                 tags$p(style = "margin-bottom:8px;",
+                        tags$b("Não mistura unidades. "),
+                        "O SIM conta óbitos, o SIH conta AIHs e o linkage conta ",
+                        "episódios. As três não são intercambiáveis e cada ",
+                        "contagem aparece com a sua unidade nomeada ao lado."),
+                 tags$p(style = "margin-bottom:0;",
+                        tags$b("Não confunde cobertura com qualidade. "),
+                        "Cobertura baixa do linkage pode ser falha de ",
+                        "pareamento ou ausência de registro no SIH. O painel ",
+                        "separa as duas coisas em vez de reportar um número só."))))
   ),
 
   # ===================== PANORAMA =====================
@@ -3128,6 +3956,16 @@ ui <- page_navbar(
           "uma sequência decrescente — a tabela de reconciliação abaixo fecha ",
           "a conta de cada lado separadamente."),
       div(class = "section-lead",
+          tags$b("O alvo não é todo pareável. "),
+          "A Etapa 1 chama de \"óbito hospitalar\" tanto o que ocorreu em ",
+          tags$b("hospital"), " quanto o que ocorreu em ",
+          tags$b("outro estabelecimento de saúde"), " — UPA, pronto ",
+          "atendimento, unidade básica. O segundo grupo é atendimento ",
+          "ambulatorial: não gera AIH, logo não existe registro no SIH para ",
+          "parear. Ele entra no denominador e derruba a cobertura sem que haja ",
+          "falha de pareamento. O gráfico de captura por local de ocorrência, ",
+          "abaixo, separa os dois; a conferência do segundo grupo é no SIA."),
+      div(class = "section-lead",
           tags$b("Fluxo em 5 etapas. "),
           "Etapa 1: os óbitos hospitalares do SIM formam o alvo — como a AIH ",
           "não separa público de privado, todo óbito hospitalar é candidato. ",
@@ -3144,14 +3982,16 @@ ui <- page_navbar(
                   value = textOutput("ql_kpi_alvo", inline = TRUE),
                   showcase = bs_icon("bullseye"),
                   theme = value_box_theme(bg = pal$white, fg = pal$dark)),
-        value_box(title = "Pareados · encontro das bases",
+        value_box(title = "Pareados · episódios do SIH",
                   value = textOutput("ql_kpi_par", inline = TRUE),
                   showcase = bs_icon("link-45deg"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$primary)),
+                  theme = value_box_theme(bg = pal$white, fg = pal$primary),
+                  p(tags$small(class = "kpi-note", "unidade: episódio de internação"))),
         value_box(title = "% do alvo capturado",
                   value = textOutput("ql_kpi_cob", inline = TRUE),
                   showcase = bs_icon("crosshair"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$alert)),
+                  theme = value_box_theme(bg = pal$white, fg = pal$alert),
+                  p(tags$small(class = "kpi-note", textOutput("ql_kpi_cob_nd", inline = TRUE)))),
         value_box(title = "Match exato",
                   value = textOutput("ql_kpi_exato", inline = TRUE),
                   showcase = bs_icon("check2-circle"),
@@ -3178,9 +4018,24 @@ ui <- page_navbar(
                             "episódios de internação. A barra âmbar é o mesmo ",
                             "conjunto visto pelas duas bases."))),
         card(full_screen = TRUE,
+             card_header("Captura do alvo por local de ocorrência",
+                         selo_periodo("Período completo do arquivo de linkage")),
+             plotlyOutput("ql_lococor", height = "440px"),
+             div(style = "padding:0 16px 12px;",
+                 tags$small(class = "text-muted",
+                            "Óbito em outro estabelecimento de saúde não gera ",
+                            "AIH — a barra vermelha desse grupo não é falha de ",
+                            "pareamento, é ausência de registro no SIH.")))),
+      layout_columns(
+        col_widths = c(7, 5),
+        card(full_screen = TRUE,
+             card_header("Cobertura do alvo por ano e local de ocorrência",
+                         selo_periodo("Período completo do arquivo de linkage")),
+             plotlyOutput("ql_lococor_ano", height = "400px")),
+        card(full_screen = TRUE,
              card_header("Sensibilidade da janela de retroação (Etapa 3)",
                          selo_periodo("Período completo do arquivo de linkage")),
-             plotlyOutput("ql_sens", height = "440px"))),
+             plotlyOutput("ql_sens", height = "400px"))),
       layout_columns(
         col_widths = c(6, 6),
         card(full_screen = TRUE,
@@ -3197,6 +4052,131 @@ ui <- page_navbar(
              card_header("Como cada número se relaciona",
                          selo_periodo("Período completo do arquivo de linkage")),
              DTOutput("ql_recon")))
+    ),
+    nav_panel(
+      "Óbitos não capturados",
+      banner_sem_v3("qual"),
+      div(class = "section-lead",
+          tags$b("O que sobra fora do linkage — e por quê. "),
+          "Parte do alvo da Etapa 1 nunca poderia ter sido pareada: são óbitos ",
+          "ocorridos fora do regime de internação, onde não existe AIH. Este ",
+          "painel separa o que é ausência de registro no SIH do que é falha de ",
+          "pareamento, e aponta onde conferir cada parcela."),
+      # Cada KPI diz o numerador e o denominador por extenso. A unidade é
+      # sempre ÓBITO DO SIM (distinto); o número de episódios do SIH pareados
+      # aparece à parte, porque um óbito pode ter sido pareado a mais de um
+      # episódio e os dois totais não coincidem.
+      layout_columns(
+        fill = FALSE, col_widths = c(3, 3, 3, 3),
+        value_box(title = "Óbitos do alvo capturados na AIH",
+                  value = textOutput("nc_kpi_cob", inline = TRUE),
+                  showcase = bs_icon("intersect"),
+                  theme = value_box_theme(bg = pal$white, fg = pal$dark),
+                  p(tags$small(class = "kpi-note", textOutput("nc_kpi_cob_nd", inline = TRUE))),
+                  p(tags$small(class = "kpi-note",
+                               "óbitos distintos do SIM com ≥ 1 AIH ÷ alvo (LOCOCOR 1 + 2)"))),
+        value_box(title = "Em hospital (LOCOCOR 1) · captura",
+                  value = textOutput("nc_kpi_hosp", inline = TRUE),
+                  showcase = bs_icon("hospital"),
+                  theme = value_box_theme(bg = pal$white, fg = pal$primary),
+                  p(tags$small(class = "kpi-note", textOutput("nc_kpi_hosp_nd", inline = TRUE))),
+                  p(tags$small(class = "kpi-note", "óbitos pareados ÷ óbitos ocorridos em hospital · pode gerar AIH"))),
+        value_box(title = "Em outro estabelecimento (LOCOCOR 2) · captura",
+                  value = textOutput("nc_kpi_outro", inline = TRUE),
+                  showcase = bs_icon("building"),
+                  theme = value_box_theme(bg = "#FFF5F5", fg = pal$alert),
+                  p(tags$small(class = "kpi-note", textOutput("nc_kpi_outro_nd", inline = TRUE))),
+                  p(tags$small(class = "kpi-note", "óbitos pareados ÷ óbitos em UPA, pronto atendimento, UBS · não gera AIH"))),
+        value_box(title = "Óbitos do SIM sem par no SIH",
+                  value = textOutput("nc_kpi_total", inline = TRUE),
+                  showcase = bs_icon("question-diamond"),
+                  theme = value_box_theme(bg = pal$white, fg = pal$dark),
+                  p(tags$small(class = "kpi-note", textOutput("nc_kpi_total_nd", inline = TRUE))),
+                  p(tags$small(class = "kpi-note", textOutput("nc_kpi_epis", inline = TRUE))))
+      ),
+      layout_columns(
+        col_widths = c(7, 5),
+        card(full_screen = TRUE,
+             card_header("Por nível de complexidade do estabelecimento",
+                         selo_periodo("Período completo do arquivo de linkage")),
+             DTOutput("nc_tab_complex"),
+             div(style = "padding:10px 16px 14px;",
+                 tags$small(class = "text-muted",
+                            tags$b("Terciário"), " = hospital geral ou especializado ",
+                            "com leito de UTI neonatal e/ou pediátrica cadastrado ",
+                            "no CNES (competência mais recente). Sem esse leito, ",
+                            "o hospital conta como ", tags$b("não terciário"),
+                            ". ", tags$b("% pareado"), " é do lado do SIH: ",
+                            "episódios com desfecho óbito que acharam a DO. ",
+                            tags$b("Óbitos sem par"), " é do lado do SIM: ",
+                            "óbitos do alvo sem AIH, pelo CNES informado na DO."))),
+        card(full_screen = TRUE,
+             card_header("Óbitos sem par: complexidade × vínculo com o SUS",
+                         selo_periodo("Período completo do arquivo de linkage")),
+             plotlyOutput("nc_plot_complex", height = "380px"),
+             div(style = "padding:6px 16px 12px;",
+                 tags$small(class = "text-muted",
+                            "Unidade ", tags$b("sem nenhuma AIH de 0–6 anos no período"),
+                            " internou a criança fora do SUS: a DO existe, a AIH ",
+                            "não. Não é falha de pareamento.")))
+      ),
+      layout_columns(
+        col_widths = c(7, 5),
+        card(full_screen = TRUE,
+             card_header("Estabelecimentos que mais concentram óbito sem par",
+                         selo_periodo("Período completo do arquivo de linkage")),
+             DTOutput("nc_tab_cnes")),
+        card(full_screen = TRUE,
+             card_header("Óbito sem par: com e sem CNES informado",
+                         selo_periodo("Período completo do arquivo de linkage")),
+             DTOutput("nc_tab_cnes_falta"),
+             div(style = "padding:10px 16px 14px;",
+                 tags$small(class = "text-muted",
+                            "Sem o CNES na DO não há como localizar o ",
+                            "estabelecimento em nenhuma base — esse resíduo ",
+                            "fica sem explicação possível e precisa ser ",
+                            "declarado como tal.")))),
+      layout_columns(
+        col_widths = 12,
+        card(card_header("Onde cada parcela é conferida"),
+             div(style = "padding:14px 18px;",
+                 tags$p(tags$b("1. Óbito em hospital, sem par no SIH. "),
+                        "Aqui sim pode haver falha de pareamento — data ",
+                        "divergente, CNES ausente nas duas pontas, município ",
+                        "de residência inconsistente — mas também internação ",
+                        "não-SUS, que não gera AIH. A tabela por complexidade ",
+                        "separa as duas: óbito em hospital que ", tags$b("teve"),
+                        " AIH de 0–6 anos no período é candidato a falha de ",
+                        "pareamento; óbito em hospital ", tags$b("sem nenhuma"),
+                        " AIH no período é internação fora do SUS."),
+                 tags$p(tags$b("2. Óbito em outro estabelecimento de saúde. "),
+                        "UPA, pronto atendimento e unidade básica produzem ",
+                        "registro no ", tags$b("SIA"),
+                        " (produção ambulatorial), não no SIH. É esta a ",
+                        "parcela que a conferência no SIA cobre: para cada ",
+                        "CNES e competência da tabela ao lado, verificar se ",
+                        "houve atendimento de urgência de 0 a 6 anos naquele ",
+                        "estabelecimento naquele mês."),
+                 tags$p(tags$b("O que o SIA faz e não faz. "),
+                        "A produção ambulatorial não identifica o paciente. ",
+                        "O BPA consolidado (BPA-C) é só volume; o BPA ",
+                        "individualizado (BPA-I) traz idade, sexo, município ",
+                        "e um campo de motivo de saída, que em tese pode ",
+                        "registrar o óbito. Se esse campo é de fato ",
+                        "preenchido nos atendimentos de urgência de 0 a 6 ",
+                        "anos é o que o teste do BPA-I verifica, competência ",
+                        "a competência, contra a DO. Até lá o SIA é ",
+                        "corroboração do universo — o estabelecimento atendia ",
+                        "criança naquele mês, e em que volume — ",
+                        tags$b("não pareamento individual"),
+                        ", e o painel não vai apresentá-lo como se fosse."),
+                 tags$p(tags$b("Preparo dos dados. "),
+                        "A lista completa de CNES e competências a conferir é ",
+                        "gravada em ", tags$code("cnes_obitos_nao_capturados.csv"),
+                        " pelo script de linkage. Os scripts ",
+                        tags$code("10_cnes_sia.R"),
+                        " baixam a fatia necessária do SIA.")))
+      )
     ),
     nav_panel(
       "Descritiva dos linkados",
@@ -3237,33 +4217,83 @@ ui <- page_navbar(
     nav_panel(
       "Guia de CIDs",
       div(class = "section-lead",
-          tags$b("Dicionário curado de códigos CID-10. "),
-          "Os ", fmt_br(nrow(cid_dic)), " códigos revisados pela equipe, com ",
-          "sistema do organismo, grupo de patologia, marcação de código ",
-          "genérico/mal definido e as notas de revisão. As duas últimas ",
-          "colunas contam quantas vezes cada código aparece no linkage ",
-          "carregado — como CID de entrada (SIH) e como causa básica de ",
-          "óbito (SIM)."),
+          tags$b("O universo de códigos, não só o dicionário. "),
+          "A tabela cobre todo código que aparece no linkage — como CID de ",
+          "entrada no SIH ou como causa básica de óbito no SIM — mais os ",
+          fmt_br(nrow(cid_dic)), " códigos já revisados pela equipe. Cada ",
+          "linha diz se o código está ou não no dicionário curado, o que ",
+          "torna visível o que ainda falta revisar e quanto do volume real a ",
+          "revisão já cobre."),
+      div(class = "section-lead",
+          tags$b("Razão óbito/entrada. "),
+          "Quantas vezes o código aparece como causa de óbito dividido por ",
+          "quantas vezes aparece como diagnóstico de entrada. Acima de 1, o ",
+          "código é mais frequente na saída do que na entrada — é para onde os ",
+          "óbitos migram. Abaixo de 1, é diagnóstico de entrada que raramente ",
+          "vira causa de morte. Com entrada zerada a razão fica vazia, e não ",
+          "zero: é ausência de dado, não ausência de risco."),
       layout_columns(
         fill = FALSE, col_widths = c(3, 3, 3, 3),
         value_box(title = "Códigos no dicionário",
                   value = fmt_br(nrow(cid_dic)),
                   showcase = bs_icon("journal-medical"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$primary)),
-        value_box(title = "Marcados como genéricos",
-                  value = paste0(fmt_br(sum(cid_dic$generico == 1)), " (",
-                                 fmt_pct(mean(cid_dic$generico == 1)), ")"),
-                  showcase = bs_icon("question-octagon"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$alert)),
-        value_box(title = "Com nota de revisão",
-                  value = fmt_br(sum(nzchar(trimws(cid_dic$nota)))),
-                  showcase = bs_icon("pencil-square"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$secondary)),
+                  theme = value_box_theme(bg = pal$white, fg = pal$primary),
+                  p(tags$small(class = "kpi-note",
+                               paste0(fmt_br(sum(cid_dic$generico == 1)),
+                                      " marcados como genéricos")))),
+        value_box(title = "Códigos observados fora do dicionário",
+                  value = textOutput("guia_kpi_fora", inline = TRUE),
+                  showcase = bs_icon("exclamation-diamond"),
+                  theme = value_box_theme(bg = "#FFF5F5", fg = pal$alert),
+                  p(tags$small(class = "kpi-note", "aparecem no linkage e ainda não foram revisados"))),
+        value_box(title = "Volume de óbitos já coberto",
+                  value = textOutput("guia_kpi_cob", inline = TRUE),
+                  showcase = bs_icon("check2-circle"),
+                  theme = value_box_theme(bg = pal$white, fg = pal$secondary),
+                  p(tags$small(class = "kpi-note", "% dos óbitos em código do dicionário"))),
         value_box(title = "Grupos de patologia",
                   value = fmt_br(length(unique(cid_dic$grupo))),
                   showcase = bs_icon("collection"),
                   theme = value_box_theme(bg = pal$white, fg = pal$accent))
       ),
+      layout_columns(
+        fill = FALSE, col_widths = c(3, 9),
+        card(card_header("Recorte e agregação"),
+             div(style = "padding:10px 14px;",
+                 selectInput("guia_nivel", "Agregar por:",
+                             choices = c("Código CID" = "cid",
+                                         "Grupo de patologia" = "grupo",
+                                         "Sistema do organismo" = "sistema",
+                                         "Capítulo da CID-10" = "capitulo")),
+                 selectInput("guia_escopo", "Escopo:",
+                             choices = c("Tudo que aparece no linkage" = "obs",
+                                         "Só o dicionário curado" = "dic",
+                                         "Só o que está fora do dicionário" = "fora")),
+                 selectInput("guia_espec", "Especificidade:",
+                             choices = c("Todas", "Específico",
+                                         "Genérico / mal definido")),
+                 selectInput("guia_sistema", "Sistema do organismo:",
+                             choices = c("Todos", sort(names(pal_sistema)))),
+                 checkboxInput("guia_com_volume",
+                               "Só códigos com ocorrência no linkage",
+                               value = TRUE))),
+        card(full_screen = TRUE,
+             card_header("Códigos com mais óbitos — contorno vermelho = fora do dicionário",
+                         selo_periodo("Contagens sobre o período completo do linkage")),
+             plotlyOutput("guia_top", height = "520px"))
+      ),
+      layout_columns(
+        col_widths = 12,
+        card(full_screen = TRUE,
+             card_header("Entrada (SIH) × óbito (SIM) — escala logarítmica",
+                         selo_periodo("Contagens sobre o período completo do linkage")),
+             plotlyOutput("guia_disp", height = "480px"),
+             div(style = "padding:0 16px 12px;",
+                 tags$small(class = "text-muted",
+                            "A diagonal pontilhada é a igualdade. Pontos acima ",
+                            "dela são códigos que aparecem mais no óbito do que ",
+                            "na entrada; o contorno vermelho marca os ",
+                            "genéricos.")))),
       layout_columns(
         col_widths = 12,
         card(full_screen = TRUE,
@@ -3272,14 +4302,22 @@ ui <- page_navbar(
              DTOutput("guia_tab")))
     ),
     nav_panel(
-      "Trajetória hospitalar (T₀→T₂)",
-      banner_sem_dados(), selo_linkage_ok(),
+      "Trajetória hospitalar (cascata)",
+      banner_sem_dados(), banner_sem_cascata(), selo_linkage_ok(),
       div(class = "section-lead",
-          tags$b("Linha do tempo do paciente. "),
-          "T₀ = entrada hospitalar (SIH) · T₁ = seguimento e transferências · ",
-          "T₂ = desfecho (alta, óbito ou transferência), com o óbito confirmado ",
-          "no SIM. A base é restrita a internações que terminaram em óbito ou ",
-          "transferência, recorte necessário para reconstruir a trajetória até o óbito."),
+          tags$b("A internação não avança por etapas — ela termina num desfecho. "),
+          "Cada episódio é lido na sequência real das suas AIHs. A primeira AIH ",
+          "é o ", tags$b("estágio 1"), " e termina em alta, óbito ou ",
+          "transferência. Quem foi transferido abre o ", tags$b("estágio 2"),
+          ", que termina de novo em alta, óbito ou transferência — e assim por ",
+          "diante. Em cada barra, 100% é quem chegou àquele estágio, não o total ",
+          "de internações: por isso as porcentagens dos estágios não se somam."),
+      div(class = "section-lead",
+          tags$b("Unidade: AIH. "),
+          "Um episódio com três AIHs aparece uma vez em cada um dos três ",
+          "estágios. O desfecho mostrado é o da AIH daquele estágio, e não o ",
+          "desfecho final do episódio — é essa distinção que separa \"foi ",
+          "transferido\" de \"morreu depois de transferido\"."),
       layout_columns(
         fill = FALSE, col_widths = c(4, 2, 2, 2, 2),
         card(card_header("Recorte"),
@@ -3288,29 +4326,67 @@ ui <- page_navbar(
                              choices = c("Todas as faixas", "Neonatal (0–27 dias)",
                                          "Pós-neonatal (28 d–<1 ano)", "1 a 6 anos")),
                  selectInput("tj_regiao", "Região:",
-                             choices = c("Brasil", REG_ORDEM)))),
-        value_box(title = "Episódios (óbito + transf.)", value = textOutput("tj_kpi_t0", inline = TRUE),
+                             choices = c("Brasil", REG_ORDEM)),
+                 radioButtons("tj_modo", "Escala das barras:",
+                              choices = c("% de quem chegou ao estágio" = "pct",
+                                          "Contagem absoluta" = "n"),
+                              selected = "pct"))),
+        value_box(title = "Episódios (estágio 1)", value = textOutput("tj_kpi_t0", inline = TRUE),
                   showcase = bs_icon("box-arrow-in-right"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$primary)),
-        value_box(title = "Com transferência (T₁)", value = textOutput("tj_kpi_t1", inline = TRUE),
+                  theme = value_box_theme(bg = pal$white, fg = pal$primary),
+                  p(tags$small(class = "kpi-note", "primeira AIH de cada episódio"))),
+        value_box(title = "Transferidos no estágio 1", value = textOutput("tj_kpi_t1", inline = TRUE),
                   showcase = bs_icon("arrow-left-right"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$secondary)),
-        value_box(title = "Óbitos (T₂)", value = textOutput("tj_kpi_t2", inline = TRUE),
+                  theme = value_box_theme(bg = pal$white, fg = pal$secondary),
+                  p(tags$small(class = "kpi-note", "abrem o estágio 2"))),
+        value_box(title = "Óbito já no estágio 1", value = textOutput("tj_kpi_t2", inline = TRUE),
                   showcase = bs_icon("person-dash"),
-                  theme = value_box_theme(bg = pal$white, fg = pal$alert)),
-        value_box(title = "Permanência mediana", value = textOutput("tj_kpi_dias", inline = TRUE),
+                  theme = value_box_theme(bg = pal$white, fg = pal$alert),
+                  p(tags$small(class = "kpi-note", "sem passar por transferência"))),
+        value_box(title = "Óbito após transferência", value = textOutput("tj_kpi_dias", inline = TRUE),
                   showcase = bs_icon("clock-history"),
                   theme = value_box_theme(bg = pal$white, fg = pal$accent),
-                  p(tags$small(class = "kpi-note", "dias de T₀ a T₂")))
+                  p(tags$small(class = "kpi-note", "% dos transferidos que morrem")))
       ),
       layout_columns(
         col_widths = c(6, 6),
         card(full_screen = TRUE,
-             card_header("Funil T₀ → T₁ → T₂", selo_ok()),
-             plotlyOutput("tj_funil", height = "440px")),
+             card_header("Cascata — desfecho de cada estágio", selo_ok()),
+             plotlyOutput("tj_cascata", height = "440px"),
+             div(style = "padding:0 16px 12px;",
+                 tags$small(class = "text-muted",
+                            "Todos os episódios da coorte, inclusive os que ",
+                            "terminam em alta — que não entram na base ",
+                            "analítica do linkage."))),
+        card(full_screen = TRUE,
+             card_header("A subpopulação dos transferidos", selo_ok()),
+             plotlyOutput("tj_cascata_tr", height = "440px"),
+             div(style = "padding:0 16px 12px;",
+                 tags$small(class = "text-muted",
+                            "Só quem chegou ao estágio vindo de uma ",
+                            "transferência. É a leitura pedida na revisão: a ",
+                            "transferência abre uma população nova, com os ",
+                            "seus próprios três desfechos.")))),
+      layout_columns(
+        col_widths = 12,
+        card(full_screen = TRUE,
+             card_header("Estágio × desfecho de origem × desfecho", selo_ok()),
+             DTOutput("tj_tab_casc"))),
+      layout_columns(
+        col_widths = c(6, 6),
+        card(full_screen = TRUE,
+             card_header("Leitura anterior — barras sobre a base analítica",
+                         selo_ok()),
+             plotlyOutput("tj_funil", height = "400px"),
+             div(style = "padding:0 16px 12px;",
+                 tags$small(class = "text-muted",
+                            "Mantido para comparação com as versões anteriores ",
+                            "do painel. Aqui a base é só óbito + transferência ",
+                            "e as barras dividem o mesmo total — é a leitura ",
+                            "que a cascata acima substitui."))),
         card(full_screen = TRUE,
              card_header("Qualidade de preenchimento por região", selo_ok()),
-             plotlyOutput("tj_qualidade", height = "440px")))
+             plotlyOutput("tj_qualidade", height = "400px")))
     ),
     nav_panel(
       "Transição de CID (entrada → óbito)",
@@ -3928,6 +5004,51 @@ server <- function(input, output, session) {
   }
 
   # ---- KPIs do Panorama ----
+  # ---- PÁGINA INICIAL ------------------------------------------------------
+  # Números-âncora e navegação. Nenhum cálculo novo aqui: são os mesmos
+  # agregados dos painéis, para que a capa não possa divergir do miolo.
+  output$home_periodo <- renderText(paste0(rng()[1], "–", rng()[2]))
+  output$home_obitos       <- renderText(fmt_br(sum_num(filt_idade_m())))
+  output$home_internacoes  <- renderText(fmt_br(sum_num(filt_idade_i())))
+  output$home_tmm5 <- renderText({
+    d <- sim_nacano[sim_nacano$ano >= rng()[1] & sim_nacano$ano <= rng()[2], ]
+    if (nrow(d) == 0) return("—")
+    fmt_br(mean(d$u5mr, na.rm = TRUE), 1)
+  })
+  output$home_pareados <- renderText({
+    if (!TRAJ_REAL) return("—")
+    d <- traj_filtrada(rng()[1], rng()[2])
+    if (!nrow(d)) return("—")
+    fmt_br(sum(!is.na(d$cid_obito)))
+  })
+  output$home_gen <- renderText({
+    if (!TRAJ_REAL) return("—")
+    d <- traj_filtrada(rng()[1], rng()[2])
+    d <- d[!is.na(d$cid_obito), ]
+    if (!nrow(d)) return("—")
+    fmt_pct(mean(d$transicao %in% TRANS_NUNCA_ESCLARECIDA))
+  })
+
+  # Cartões de navegação. nav_select aceita o título exato do nav_panel; se
+  # algum título mudar, o botão simplesmente não navega — por isso os títulos
+  # abaixo têm de ser mantidos em sincronia com a UI.
+  ir_para <- function(id, destino)
+    observeEvent(input[[id]], nav_select("nav_principal", destino),
+                 ignoreInit = TRUE)
+  ir_para("ir_panorama",  "Panorama")
+  # O painel de faixa etária usa `paste0(fx$n, ". ", fx$curto)` como título —
+  # o mesmo que aparece no menu. Montar aqui pela mesma regra evita que o
+  # botão aponte para um título que não existe.
+  ir_para("ir_faixa", paste0(faixas$neo$n, ". ", faixas$neo$curto))
+  ir_para("ir_sistemas",  "Sistemas & Patologias")
+  ir_para("ir_qualidade", "Qualidade do linkage")
+  ir_para("ir_naocap",    "Óbitos não capturados")
+  ir_para("ir_traj",      "Trajetória hospitalar (cascata)")
+  ir_para("ir_transicao", "Transição de CID (entrada → óbito)")
+  ir_para("ir_guia",      "Guia de CIDs")
+  ir_para("ir_metas",     "Metas ODS/IPEA")
+  ir_para("ir_metodo",    "Metodologia")
+
   output$kpi_mort_total <- renderText(fmt_br(sum_num(filt_idade_m())))
   output$kpi_int_total  <- renderText(fmt_br(sum_num(filt_idade_i())))
 
@@ -4135,19 +5256,73 @@ server <- function(input, output, session) {
   tj_dados <- reactive(traj_filtrada(rng()[1], rng()[2],
                                      input$tj_faixa %||% "Todas as faixas",
                                      input$tj_regiao %||% "Brasil"))
-  output$tj_kpi_t0 <- renderText(fmt_br(nrow(tj_dados())))
+  # ---- v3.3 · cascata de estágios ----
+  tj_casc <- reactive(casc_filtrada(rng()[1], rng()[2],
+                                    input$tj_faixa %||% "Todas as faixas",
+                                    input$tj_regiao %||% "Brasil"))
+  # n de AIHs num estágio, opcionalmente com o desfecho de origem e o desfecho
+  # do próprio estágio fixados. Devolve NA quando não há a cascata carregada,
+  # e nunca um número derivado de outra fonte.
+  casc_n <- function(estagio = NULL, desfecho = NULL, desfecho_ant = NULL) {
+    d <- tj_casc()
+    if (is.null(d) || !nrow(d)) return(NA_real_)
+    if (!is.null(estagio))      d <- d[d$estagio %in% estagio, ]
+    if (!is.null(desfecho))     d <- d[d$desfecho %in% desfecho, ]
+    if (!is.null(desfecho_ant)) d <- d[d$desfecho_ant %in% desfecho_ant, ]
+    if (!nrow(d)) return(0)
+    sum(d$n, na.rm = TRUE)
+  }
+
+  output$tj_kpi_t0 <- renderText({
+    if (!CASC_REAL) return(fmt_br(nrow(tj_dados())))
+    v <- casc_n(estagio = 1L); if (is.na(v)) "—" else fmt_br(v)
+  })
   output$tj_kpi_t1 <- renderText({
-    d <- tj_dados(); if (nrow(d) == 0) return("—")
-    fmt_pct(mean(d$n_transferencias > 0, na.rm = TRUE))
+    if (!CASC_REAL) {
+      d <- tj_dados(); if (nrow(d) == 0) return("—")
+      return(fmt_pct(mean(d$n_transferencias > 0, na.rm = TRUE)))
+    }
+    v <- casc_n(estagio = 1L, desfecho = "Transferência")
+    if (is.na(v)) "—" else fmt_br(v)
   })
   output$tj_kpi_t2 <- renderText({
-    d <- tj_dados(); if (nrow(d) == 0) return("—")
-    fmt_br(sum(d$desfecho == "Óbito", na.rm = TRUE))
+    if (!CASC_REAL) {
+      d <- tj_dados(); if (nrow(d) == 0) return("—")
+      return(fmt_br(sum(d$desfecho == "Óbito", na.rm = TRUE)))
+    }
+    v <- casc_n(estagio = 1L, desfecho = "Óbito")
+    if (is.na(v)) "—" else fmt_br(v)
   })
+  # % dos que saíram transferidos e cujo estágio seguinte terminou em óbito.
   output$tj_kpi_dias <- renderText({
-    d <- tj_dados(); if (nrow(d) == 0) return("—")
-    fmt_br(stats::median(d$dias_internacao, na.rm = TRUE), 0)
+    if (!CASC_REAL) {
+      d <- tj_dados(); if (nrow(d) == 0) return("—")
+      return(fmt_br(stats::median(d$dias_internacao, na.rm = TRUE), 0))
+    }
+    den <- casc_n(desfecho_ant = "Transferência")
+    if (is.na(den) || den == 0) return("—")
+    num <- casc_n(desfecho_ant = "Transferência", desfecho = "Óbito")
+    fmt_pct(num / den)
   })
+  output$tj_cascata    <- renderPlotly(
+    plot_cascata(tj_casc(), modo = input$tj_modo %||% "pct"))
+  output$tj_cascata_tr <- renderPlotly(
+    plot_cascata(tj_casc(), modo = input$tj_modo %||% "pct",
+                 so_transferidos = TRUE))
+  output$tj_tab_casc <- renderDT({
+    t <- tab_cascata(tj_casc())
+    if (is.null(t)) return(datatable(
+      data.frame(Aviso = MSG_SEM_CASCATA), rownames = FALSE,
+      options = list(dom = "t")))
+    datatable(t, rownames = FALSE, extensions = "Buttons",
+              options = list(pageLength = 12, dom = "Bfrtip", scrollX = TRUE,
+                             buttons = c("copy", "csv", "excel"))) %>%
+      formatRound("% da subpopulação", 1) %>%
+      formatStyle("Desfecho deste estágio",
+                  color = styleEqual(names(DESF_COR), unname(DESF_COR)),
+                  fontWeight = "600")
+  })
+
   output$tj_funil     <- renderPlotly(plot_trajetoria(tj_dados()))
   output$tj_qualidade <- renderPlotly(plot_qualidade(traj_filtrada(rng()[1], rng()[2],
                                                                    input$tj_faixa %||% "Todas as faixas",
@@ -4254,13 +5429,24 @@ server <- function(input, output, session) {
     f <- qual$funil
     fmt_br(f$n[grepl("Pareados", f$etapa)][1])
   })
+  # % do alvo: óbitos DISTINTOS pareados ÷ óbitos do alvo. Não usar o
+  # número de episódios no numerador — um óbito pareado a dois episódios
+  # contaria duas vezes contra um denominador de óbitos.
   output$ql_kpi_cob <- renderText({
     if (!QUAL_REAL) return("—")
+    c0 <- nc_conta()
+    if (!is.null(c0) && isTRUE(c0$alvo > 0))
+      return(fmt_pct(c0$pareados_distintos / c0$alvo))
     f <- qual$funil
     alvo <- f$n[grepl("alvo", f$etapa)][1]
     par  <- f$n[grepl("Pareados", f$etapa)][1]
     if (is.na(alvo) || alvo == 0) return("—")
     fmt_pct(par / alvo)
+  })
+  output$ql_kpi_cob_nd <- renderText({
+    c0 <- nc_conta()
+    if (is.null(c0)) return("episódios pareados ÷ alvo")
+    paste0(fmt_razao(c0$pareados_distintos, c0$alvo), " óbitos distintos")
   })
   output$ql_kpi_exato <- renderText({
     if (!QUAL_REAL) return("—")
@@ -4286,7 +5472,93 @@ server <- function(input, output, session) {
     if (is.na(par) || par == 0) return("—")
     fmt_pct(prev / par)
   })
-  output$ql_funil <- renderPlotly(plot_funil_etapas())
+  output$ql_funil       <- renderPlotly(plot_funil_etapas())
+  output$ql_lococor     <- renderPlotly(plot_captura_lococor())
+  output$ql_lococor_ano <- renderPlotly(plot_captura_lococor_ano())
+
+  # ---- 5g-bis. LINKAGE v3.3 · ÓBITOS NÃO CAPTURADOS ------------------------
+  nc_captura <- reactive(captura_lococor())
+  nc_linha <- function(cod) {
+    d <- nc_captura()
+    if (is.null(d)) return(NULL)
+    r <- d[as.character(d$local_ocor) == cod, ]
+    if (!nrow(r)) return(NULL)
+    r[1, ]
+  }
+  nc_c <- reactive(nc_conta())
+  output$nc_kpi_cob <- renderText({
+    c0 <- nc_c(); if (is.null(c0) || !isTRUE(c0$alvo > 0)) return("—")
+    fmt_pct(c0$pareados_distintos / c0$alvo)
+  })
+  output$nc_kpi_cob_nd <- renderText({
+    c0 <- nc_c(); if (is.null(c0)) return("")
+    fmt_razao(c0$pareados_distintos, c0$alvo)
+  })
+  output$nc_kpi_hosp <- renderText({
+    c0 <- nc_c(); if (is.null(c0) || !isTRUE(c0$hosp_alvo > 0)) return("—")
+    fmt_pct(c0$hosp_par / c0$hosp_alvo)
+  })
+  output$nc_kpi_hosp_nd <- renderText({
+    c0 <- nc_c(); if (is.null(c0)) return("")
+    fmt_razao(c0$hosp_par, c0$hosp_alvo)
+  })
+  output$nc_kpi_outro <- renderText({
+    c0 <- nc_c(); if (is.null(c0) || !isTRUE(c0$outro_alvo > 0)) return("—")
+    fmt_pct(c0$outro_par / c0$outro_alvo)
+  })
+  output$nc_kpi_outro_nd <- renderText({
+    c0 <- nc_c(); if (is.null(c0)) return("")
+    fmt_razao(c0$outro_par, c0$outro_alvo)
+  })
+  output$nc_kpi_total <- renderText({
+    c0 <- nc_c(); if (is.null(c0)) return("—")
+    fmt_br(c0$nao_capturados)
+  })
+  output$nc_kpi_total_nd <- renderText({
+    c0 <- nc_c(); if (is.null(c0)) return("")
+    paste0("= ", fmt_br(c0$alvo), " do alvo − ", fmt_br(c0$pareados_distintos),
+           " óbitos distintos pareados")
+  })
+  output$nc_kpi_epis <- renderText({
+    c0 <- nc_c(); if (is.null(c0) || is.na(c0$episodios_pareados)) return("")
+    paste0(fmt_br(c0$episodios_pareados), " episódios do SIH pareados: ",
+           fmt_br(c0$episodios_pareados - c0$pareados_distintos),
+           " óbitos têm mais de um episódio")
+  })
+  output$nc_tab_complex <- renderDT({
+    t <- tab_complexidade()
+    if (is.null(t)) return(datatable(
+      data.frame(Aviso = MSG_SEM_CNES_VOL), rownames = FALSE,
+      options = list(dom = "t")))
+    datatable(t, rownames = FALSE, extensions = "Buttons",
+              options = list(dom = "Bt", ordering = FALSE, scrollX = TRUE,
+                             buttons = c("copy", "csv", "excel"))) %>%
+      formatRound(c("Estabelecimentos", "Episódios SIH com óbito",
+                    "Pareados com a DO", "Óbitos do SIM sem par",
+                    "— em unidade sem AIH 0–6 no período"),
+                  0, mark = ".", dec.mark = ",") %>%
+      formatRound(c("% pareado (lado SIH)", "% do sem par"), 1,
+                  mark = ".", dec.mark = ",") %>%
+      formatStyle("Nível de complexidade", fontWeight = "bold")
+  })
+  output$nc_plot_complex <- renderPlotly(plot_complexidade())
+  output$nc_tab_cnes <- renderDT({
+    t <- tab_nao_capturados()
+    if (is.null(t)) return(datatable(
+      data.frame(Aviso = MSG_SEM_LOCOCOR), rownames = FALSE,
+      options = list(dom = "t")))
+    datatable(t, rownames = FALSE, extensions = "Buttons",
+              options = list(pageLength = 12, dom = "Bfrtip", scrollX = TRUE,
+                             buttons = c("copy", "csv", "excel")))
+  })
+  output$nc_tab_cnes_falta <- renderDT({
+    s <- resumo_sem_cnes()
+    if (is.null(s)) return(datatable(
+      data.frame(Aviso = MSG_SEM_LOCOCOR), rownames = FALSE,
+      options = list(dom = "t")))
+    datatable(s, rownames = FALSE, options = list(dom = "t", scrollX = TRUE)) %>%
+      formatRound("% sem CNES", 1)
+  })
   output$ql_recon <- renderDT({
     r <- tab_reconciliacao()
     if (is.null(r)) return(datatable(data.frame(aviso = MSG_SEM_V3),
@@ -4328,19 +5600,87 @@ server <- function(input, output, session) {
       formatRound("Permanência mediana (dias)", 0)
   })
 
-  # ---- 5h. LINKAGE v3 · GUIA DE CIDs ---------------------------------------
+  # ---- 5h. LINKAGE v3.3 · GUIA DE CIDs (universo observado) -----------------
+  guia_uni <- reactive(guia_universo(traj))
+
+  # Universo depois dos filtros do painel. Os filtros são aplicados ANTES da
+  # agregação, para que "agregar por sistema" some só o que passou no recorte.
+  guia_filt <- reactive({
+    u <- guia_uni()
+    if (is.null(u)) return(NULL)
+    esc <- input$guia_escopo %||% "obs"
+    if (esc == "dic")  u <- u[u$no_dicionario == "No dicionário curado", ]
+    if (esc == "fora") u <- u[u$no_dicionario == "Fora do dicionário", ]
+    ee <- input$guia_espec %||% "Todas"
+    if (ee != "Todas") u <- u[u$especificidade == ee, ]
+    ss <- input$guia_sistema %||% "Todos"
+    if (ss != "Todos") u <- u[!is.na(u$sistema) & u$sistema == ss, ]
+    # Só com ocorrência: vale apenas quando há linkage carregado, senão
+    # zeraria a tabela inteira.
+    if (isTRUE(input$guia_com_volume) && TRAJ_REAL)
+      u <- u[!is.na(u$n_obito) & (u$n_obito > 0 | u$n_entrada > 0), ]
+    u
+  })
+
+  output$guia_kpi_fora <- renderText({
+    cb <- guia_cobertura(guia_uni())
+    if (is.na(cb$fora)) return("—")
+    paste0(fmt_br(cb$fora), " (", fmt_br(cb$fora_obitos), " óbitos)")
+  })
+  output$guia_kpi_cob <- renderText({
+    cb <- guia_cobertura(guia_uni())
+    if (is.na(cb$pct_obito)) return("—")
+    fmt_pct(cb$pct_obito)
+  })
+
+  output$guia_top <- renderPlotly(
+    plot_guia_top(guia_filt(),
+                  so_fora = identical(input$guia_escopo %||% "obs", "fora")))
+  output$guia_disp <- renderPlotly(plot_guia_disp(guia_filt()))
+
   output$guia_tab <- renderDT({
-    g <- guia_cids_tab(traj)
-    names(g) <- c("CID", "Nome revisado", "Sistema do organismo",
-                  "Grupo de patologia", "Capítulo", "Especificidade",
-                  "n como CID de entrada (SIH)", "n como causa de óbito (SIM)",
-                  "Nota da revisão")
-    datatable(g, rownames = FALSE, filter = "top", extensions = "Buttons",
-              options = list(pageLength = 15, dom = "Bfrtip", scrollX = TRUE,
-                             buttons = c("copy", "csv", "excel"))) %>%
-      formatStyle("Especificidade",
-                  color = styleEqual(c("Genérico / mal definido", "Específico"),
-                                     c(pal$alert, pal$primary)))
+    u <- guia_filt()
+    if (is.null(u) || !nrow(u))
+      return(datatable(data.frame(Aviso = "Nenhum código no recorte"),
+                       rownames = FALSE, options = list(dom = "t")))
+    nivel <- input$guia_nivel %||% "cid"
+    g <- guia_agregado(u, nivel)
+    if (identical(nivel, "cid")) {
+      g <- g[, c("cid", "nome", "sistema", "grupo", "capitulo",
+                 "especificidade", "no_dicionario",
+                 "n_entrada", "n_obito", "razao", "nota")]
+      names(g) <- c("CID", "Nome revisado", "Sistema do organismo",
+                    "Grupo de patologia", "Capítulo", "Especificidade",
+                    "Situação na revisão",
+                    "n como CID de entrada (SIH)", "n como causa de óbito (SIM)",
+                    "Razão óbito/entrada", "Nota da revisão")
+      dt <- datatable(g, rownames = FALSE, filter = "top",
+                      extensions = "Buttons",
+                      options = list(pageLength = 15, dom = "Bfrtip",
+                                     scrollX = TRUE,
+                                     buttons = c("copy", "csv", "excel"))) %>%
+        formatStyle("Especificidade",
+                    color = styleEqual(c("Genérico / mal definido", "Específico"),
+                                       c(pal$alert, pal$primary))) %>%
+        formatStyle("Situação na revisão",
+                    color = styleEqual(c("Fora do dicionário",
+                                         "No dicionário curado"),
+                                       c(pal$alert, pal$secondary)),
+                    fontWeight = "600")
+    } else {
+      names(g)[names(g) == ".chave"] <- switch(
+        nivel, grupo = "Grupo de patologia",
+        sistema = "Sistema do organismo", capitulo = "Capítulo da CID-10")
+      names(g)[names(g) == "n_entrada"] <- "n como CID de entrada (SIH)"
+      names(g)[names(g) == "n_obito"]   <- "n como causa de óbito (SIM)"
+      names(g)[names(g) == "razao"]     <- "Razão óbito/entrada"
+      dt <- datatable(g, rownames = FALSE, filter = "top",
+                      extensions = "Buttons",
+                      options = list(pageLength = 15, dom = "Bfrtip",
+                                     scrollX = TRUE,
+                                     buttons = c("copy", "csv", "excel")))
+    }
+    dt %>% formatRound("Razão óbito/entrada", 2)
   })
 
   # ---- 5i. LINKAGE v3 · ETAPA 5 (internações sem óbito associado) ----------

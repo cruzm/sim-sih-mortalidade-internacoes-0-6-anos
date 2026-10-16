@@ -1,0 +1,108 @@
+== LEITOS (Brasil) ==
+Pediatria clínica: 49.069 (2015) -> 43.037 (2019) -> 41.111 (2024); var -16,2%; SUS 2024 80,1%
+Pediatria cirúrgica: 4.947 (2015) -> 5.507 (2019) -> 5.864 (2024); var 18,5%; SUS 2024 69,7%
+UCI neonatal: 6.809 (2015) -> 6.499 (2019) -> 6.821 (2024); var 0,2%; SUS 2024 70,7%
+UCI pediátrica: 270 (2015) -> 298 (2019) -> 418 (2024); var 54,8%; SUS 2024 57,2%
+UTI neonatal: 8.643 (2015) -> 9.071 (2019) -> 10.250 (2024); var 18,6%; SUS 2024 50,6%
+UTI pediátrica: 4.410 (2015) -> 4.842 (2019) -> 7.188 (2024); var 63,0%; SUS 2024 48,9%
+UTIN/mil NV Brasil 2024: total 4,29, SUS 2,17
+UFs com UTIN total >=4/mil NV: DF, RN, AP, RO, ES, MG, RJ, SP, PR, RS, SC
+UFs com UTIN total <2/mil NV: MA
+UFs com UTIN SUS <2/mil NV: GO, MS, MT, BA, CE, MA, PB, PE, PI, AC, AM, PA, RO, RR, TO
+Leitos pediátricos/10 mil 0-6: min 14,7 (SC) max 39,2 (PI)
+== HOSPITAIS POR NÍVEL ==
+N1 Referência de alta complexidade: 270 / 321 / 356
+N2 UTI neo/ped habilitada: 284 / 267 / 280
+N3 UTI neo/ped sem habilitação SUS: 423 / 413 / 487
+N4 Só leito pediátrico/UCI: 4388 / 4056 / 3909
+N5 Sem leito pediátrico: 2545 / 3082 / 4008
+== SIH 2024 ==
+Neonatal (0-27 d) | N1 Referência de alta complexidade: AIH 194.323 (51,7%), obitos 7.239 (66,0%), letalidade 3,73%, hosp 330
+Neonatal (0-27 d) | N2 UTI neo/ped habilitada: AIH 84.824 (22,6%), obitos 2.723 (24,8%), letalidade 3,21%, hosp 247
+Neonatal (0-27 d) | N3 UTI neo/ped sem habilitação SUS: AIH 12.118 (3,2%), obitos 259 (2,4%), letalidade 2,14%, hosp 75
+Neonatal (0-27 d) | N4 Só leito pediátrico/UCI: AIH 82.273 (21,9%), obitos 713 (6,5%), letalidade 0,87%, hosp 1915
+Neonatal (0-27 d) | N5 Sem leito pediátrico: AIH 2.348 (0,6%), obitos 36 (0,3%), letalidade 1,53%, hosp 212
+Neonatal (0-27 d) | Sem cadastro de leito no CNES: AIH 23 (0,0%), obitos 2 (0,0%), letalidade 8,70%, hosp 2
+Pós-neonatal (28 d-<1 a) | N1 Referência de alta complexidade: AIH 133.181 (41,0%), obitos 3.275 (62,0%), letalidade 2,46%, hosp 345
+Pós-neonatal (28 d-<1 a) | N2 UTI neo/ped habilitada: AIH 77.080 (23,7%), obitos 1.438 (27,2%), letalidade 1,87%, hosp 257
+Pós-neonatal (28 d-<1 a) | N3 UTI neo/ped sem habilitação SUS: AIH 13.293 (4,1%), obitos 206 (3,9%), letalidade 1,55%, hosp 86
+Pós-neonatal (28 d-<1 a) | N4 Só leito pediátrico/UCI: AIH 100.073 (30,8%), obitos 340 (6,4%), letalidade 0,34%, hosp 2562
+Pós-neonatal (28 d-<1 a) | N5 Sem leito pediátrico: AIH 1.161 (0,4%), obitos 27 (0,5%), letalidade 2,33%, hosp 223
+Pós-neonatal (28 d-<1 a) | Sem cadastro de leito no CNES: AIH 245 (0,1%), obitos 0 (0,0%), letalidade 0,00%, hosp 3
+1 a 6 anos | N1 Referência de alta complexidade: AIH 226.927 (31,7%), obitos 1.804 (58,8%), letalidade 0,79%, hosp 309
+1 a 6 anos | N2 UTI neo/ped habilitada: AIH 136.352 (19,1%), obitos 797 (26,0%), letalidade 0,58%, hosp 234
+1 a 6 anos | N3 UTI neo/ped sem habilitação SUS: AIH 29.143 (4,1%), obitos 98 (3,2%), letalidade 0,34%, hosp 88
+1 a 6 anos | N4 Só leito pediátrico/UCI: AIH 302.231 (42,2%), obitos 356 (11,6%), letalidade 0,12%, hosp 2779
+1 a 6 anos | N5 Sem leito pediátrico: AIH 20.322 (2,8%), obitos 11 (0,4%), letalidade 0,05%, hosp 351
+1 a 6 anos | Sem cadastro de leito no CNES: AIH 440 (0,1%), obitos 0 (0,0%), letalidade 0,00%, hosp 5
+Hospitais que concentram 50% das AIH 0-6 em 2024: 282 de 4057
+== SIM 2024 ==
+Neonatal (0-27 d) | Domicílio | —: 252 (1,3%)
+Neonatal (0-27 d) | Hospital | N1 Referência de alta complexidade: 9597 (48,0%)
+Neonatal (0-27 d) | Hospital | N2 UTI neo/ped habilitada: 3729 (18,6%)
+Neonatal (0-27 d) | Hospital | N3 UTI neo/ped sem habilitação SUS: 3032 (15,2%)
+Neonatal (0-27 d) | Hospital | N4 Só leito pediátrico/UCI: 2429 (12,1%)
+Neonatal (0-27 d) | Hospital | N5 Sem leito pediátrico: 239 (1,2%)
+Neonatal (0-27 d) | Hospital | Sem cadastro de leito no CNES: 295 (1,5%)
+Neonatal (0-27 d) | Outro estab. de saúde | N1 Referência de alta complexidade: 12 (0,1%)
+Neonatal (0-27 d) | Outro estab. de saúde | N2 UTI neo/ped habilitada: 2 (0,0%)
+Neonatal (0-27 d) | Outro estab. de saúde | N3 UTI neo/ped sem habilitação SUS: 7 (0,0%)
+Neonatal (0-27 d) | Outro estab. de saúde | N4 Só leito pediátrico/UCI: 47 (0,2%)
+Neonatal (0-27 d) | Outro estab. de saúde | N5 Sem leito pediátrico: 17 (0,1%)
+Neonatal (0-27 d) | Outro estab. de saúde | —: 109 (0,5%)
+Neonatal (0-27 d) | Via pública/outros | —: 242 (1,2%)
+Pós-neonatal (28 d-<1 a) | Domicílio | —: 779 (7,9%)
+Pós-neonatal (28 d-<1 a) | Hospital | N1 Referência de alta complexidade: 3703 (37,5%)
+Pós-neonatal (28 d-<1 a) | Hospital | N2 UTI neo/ped habilitada: 1819 (18,4%)
+Pós-neonatal (28 d-<1 a) | Hospital | N3 UTI neo/ped sem habilitação SUS: 1260 (12,8%)
+Pós-neonatal (28 d-<1 a) | Hospital | N4 Só leito pediátrico/UCI: 945 (9,6%)
+Pós-neonatal (28 d-<1 a) | Hospital | N5 Sem leito pediátrico: 126 (1,3%)
+Pós-neonatal (28 d-<1 a) | Hospital | Sem cadastro de leito no CNES: 365 (3,7%)
+Pós-neonatal (28 d-<1 a) | Outro estab. de saúde | N1 Referência de alta complexidade: 5 (0,1%)
+Pós-neonatal (28 d-<1 a) | Outro estab. de saúde | N2 UTI neo/ped habilitada: 2 (0,0%)
+Pós-neonatal (28 d-<1 a) | Outro estab. de saúde | N3 UTI neo/ped sem habilitação SUS: 2 (0,0%)
+Pós-neonatal (28 d-<1 a) | Outro estab. de saúde | N4 Só leito pediátrico/UCI: 44 (0,4%)
+Pós-neonatal (28 d-<1 a) | Outro estab. de saúde | N5 Sem leito pediátrico: 17 (0,2%)
+Pós-neonatal (28 d-<1 a) | Outro estab. de saúde | —: 516 (5,2%)
+Pós-neonatal (28 d-<1 a) | Via pública/outros | —: 285 (2,9%)
+1 a 6 anos | Domicílio | —: 659 (9,2%)
+1 a 6 anos | Hospital | N1 Referência de alta complexidade: 2099 (29,3%)
+1 a 6 anos | Hospital | N2 UTI neo/ped habilitada: 1070 (14,9%)
+1 a 6 anos | Hospital | N3 UTI neo/ped sem habilitação SUS: 719 (10,0%)
+1 a 6 anos | Hospital | N4 Só leito pediátrico/UCI: 1021 (14,2%)
+1 a 6 anos | Hospital | N5 Sem leito pediátrico: 138 (1,9%)
+1 a 6 anos | Hospital | Sem cadastro de leito no CNES: 276 (3,8%)
+1 a 6 anos | Outro estab. de saúde | N1 Referência de alta complexidade: 2 (0,0%)
+1 a 6 anos | Outro estab. de saúde | N2 UTI neo/ped habilitada: 2 (0,0%)
+1 a 6 anos | Outro estab. de saúde | N3 UTI neo/ped sem habilitação SUS: 1 (0,0%)
+1 a 6 anos | Outro estab. de saúde | N4 Só leito pediátrico/UCI: 39 (0,5%)
+1 a 6 anos | Outro estab. de saúde | N5 Sem leito pediátrico: 28 (0,4%)
+1 a 6 anos | Outro estab. de saúde | —: 426 (5,9%)
+1 a 6 anos | Via pública/outros | —: 689 (9,6%)
+== SEM AIH ==
+Neonatal (0-27 d) | N1 Referência de alta complexidade: 9597 obitos, 37,9% sem AIH
+Neonatal (0-27 d) | N2 UTI neo/ped habilitada: 3729 obitos, 39,6% sem AIH
+Neonatal (0-27 d) | N3 UTI neo/ped sem habilitação SUS: 3032 obitos, 89,7% sem AIH
+Neonatal (0-27 d) | N4 Só leito pediátrico/UCI: 2429 obitos, 76,0% sem AIH
+Neonatal (0-27 d) | N5 Sem leito pediátrico: 239 obitos, 92,9% sem AIH
+Neonatal (0-27 d) | Sem cadastro de leito no CNES: 295 obitos, 68,8% sem AIH
+Pós-neonatal (28 d-<1 a) | N1 Referência de alta complexidade: 3703 obitos, 23,6% sem AIH
+Pós-neonatal (28 d-<1 a) | N2 UTI neo/ped habilitada: 1819 obitos, 33,9% sem AIH
+Pós-neonatal (28 d-<1 a) | N3 UTI neo/ped sem habilitação SUS: 1260 obitos, 85,6% sem AIH
+Pós-neonatal (28 d-<1 a) | N4 Só leito pediátrico/UCI: 945 obitos, 74,9% sem AIH
+Pós-neonatal (28 d-<1 a) | N5 Sem leito pediátrico: 126 obitos, 88,1% sem AIH
+Pós-neonatal (28 d-<1 a) | Sem cadastro de leito no CNES: 365 obitos, 77,8% sem AIH
+1 a 6 anos | N1 Referência de alta complexidade: 2099 obitos, 26,8% sem AIH
+1 a 6 anos | N2 UTI neo/ped habilitada: 1070 obitos, 37,5% sem AIH
+1 a 6 anos | N3 UTI neo/ped sem habilitação SUS: 719 obitos, 86,9% sem AIH
+1 a 6 anos | N4 Só leito pediátrico/UCI: 1021 obitos, 73,7% sem AIH
+1 a 6 anos | N5 Sem leito pediátrico: 138 obitos, 94,2% sem AIH
+1 a 6 anos | Sem cadastro de leito no CNES: 276 obitos, 81,9% sem AIH
+== ACESSO ==
+Neonatal (0-27 d) | res_tem_ref=TRUE: 9496 obitos; em hosp ref 73,5%; fora do municipio 15,8%; fora do hospital 1,8%
+Neonatal (0-27 d) | res_tem_ref=FALSE: 10513 obitos; em hosp ref 60,5%; fora do municipio 79,7%; fora do hospital 4,9%
+Pós-neonatal (28 d-<1 a) | res_tem_ref=TRUE: 4689 obitos; em hosp ref 60,0%; fora do municipio 21,9%; fora do hospital 15,2%
+Pós-neonatal (28 d-<1 a) | res_tem_ref=FALSE: 5179 obitos; em hosp ref 52,4%; fora do municipio 70,2%; fora do hospital 18,1%
+1 a 6 anos | res_tem_ref=TRUE: 3290 obitos; em hosp ref 52,8%; fora do municipio 22,6%; fora do hospital 20,9%
+1 a 6 anos | res_tem_ref=FALSE: 3879 obitos; em hosp ref 37,0%; fora do municipio 56,5%; fora do hospital 29,8%
+Municípios com hospital N1/N2: 298
