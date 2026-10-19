@@ -1,0 +1,115 @@
+RELATORIO DE LINKAGE SIM x SIH v3 — fluxo em 5 etapas — coorte 0 a 6 anos
+Gerado em: 2026-08-26 11:44
+Periodo: 2015-2024 | UFs: 27
+Buffer de data: +/- 3 dias | escore minimo: 3 | janela de retroacao: 30 dias
+
+RECONCILIACAO — DUAS TRILHAS, DOIS UNIVERSOS
+  O SIM conta OBITOS; o SIH conta EPISODIOS de internacao. Nenhum e
+  subconjunto do outro: os dois so se encontram no numero de pareados.
+
+  TRILHA SIM (unidade: obito)
+    Obitos de 0 a 6 anos ................ 407.546
+    Obitos hospitalares (alvo) .......... 374.604  (91.9% do SIM)
+    Capturados na AIH ................... 189.609  (50.6% do alvo)
+    Nao capturados ...................... 184.995  (49.4% do alvo)
+
+  TRILHA SIH (unidade: episodio de internacao)
+    Episodios de 0 a 6 anos ............. 10.137.459   [12.504.785 AIHs]
+      alta .............................. 9.734.597
+      transferencia ..................... 154.194
+      obito ............................. 198.667
+      outro/nao classificado ............ 50.001
+    Base analitica (obito+transferencia)  352.861   <- e este o numero exibido no painel
+    Obitos pareados ..................... 189.609  (95.4% dos obitos do SIH)
+
+ETAPA 1 — ALVO
+  Obitos 0-6 no SIM ................... 407.546
+  Obitos hospitalares (alvo) .......... 374.604  (91.9%)
+
+  CAPTURA POR LOCAL DE OCORRENCIA (v3.3)
+  O obito em LOCOCOR 2 (outro estabelecimento de saude: UPA, pronto
+  atendimento, UBS) e atendimento ambulatorial e nao gera AIH — logo nao
+  pode ser pareado com o SIH. Mante-lo no denominador rebaixa a cobertura
+  sem que exista falha de pareamento. A conferencia desse grupo e no SIA.
+    local de ocorrencia                      alvo   pareados  captura
+    Hospital                              363.680    185.017    50.9%
+    Outro estabelecimento de saúde        10.924        600     5.5%
+
+  CASCATA DE ESTAGIOS (v3.3) — desfecho da AIH em cada estagio do episodio
+  Estagio 1 = primeira AIH do episodio. Estagio 2 so existe para quem teve
+  uma segunda AIH. O desfecho e o da propria AIH daquele estagio.
+    estagio  desfecho da AIH                           n        %
+    1        Alta                              9.358.274    92.3%
+    1        Transferência                      385.219     3.8%
+    1        Permanência                        157.891     1.6%
+    1        Óbito                              140.744     1.4%
+    1        Encerramento administrativo          93.273     0.9%
+    1        Outro/não classificado                 426     0.0%
+    2        Alta                                947.735    82.3%
+    2        Permanência                         79.075     6.9%
+    2        Transferência                       46.602     4.0%
+    2        Encerramento administrativo          46.581     4.0%
+    2        Óbito                               31.848     2.8%
+    2        Outro/não classificado                  20     0.0%
+    3        Alta                                303.698    77.3%
+    3        Permanência                         39.968    10.2%
+    3        Encerramento administrativo          23.544     6.0%
+    3        Transferência                       13.450     3.4%
+    3        Óbito                               12.111     3.1%
+    3        Outro/não classificado                   8     0.0%
+    4        Alta                                152.077    75.7%
+    4        Permanência                         22.570    11.2%
+    4        Encerramento administrativo          13.790     6.9%
+    4        Óbito                                6.178     3.1%
+    4        Transferência                        6.155     3.1%
+    4        Outro/não classificado                   2     0.0%
+
+  SUBPOPULACAO DOS TRANSFERIDOS — o que acontece no estagio seguinte
+    estagio  desfecho da AIH                           n        %
+    2        Alta                                196.983    78.6%
+    2        Transferência                       19.635     7.8%
+    2        Permanência                         17.620     7.0%
+    2        Óbito                                9.257     3.7%
+    2        Encerramento administrativo           7.097     2.8%
+    2        Outro/não classificado                   2     0.0%
+    3        Alta                                 24.064    72.4%
+    3        Transferência                        3.206     9.6%
+    3        Permanência                          3.090     9.3%
+    3        Óbito                                1.460     4.4%
+    3        Encerramento administrativo           1.406     4.2%
+    4        Alta                                  6.814    67.7%
+    4        Transferência                        1.239    12.3%
+    4        Permanência                          1.019    10.1%
+    4        Encerramento administrativo             524     5.2%
+    4        Óbito                                  473     4.7%
+
+ETAPA 2 — LINKAGE OBITO x AIH
+  Episodios SIH com desfecho obito .... 198.667
+  Pareados ............................ 189.609  (95.4% dos episodios-obito; 50.6% do alvo)
+    match exato ....................... 150.928  (79.6%)
+    match probabilistico .............. 38.681  (20.4%)
+  Raca/cor preenchida nas duas bases .. 69.5% | concordancia: 71.9%
+
+ETAPA 3 — HISTORICO (internacao anterior ao episodio-indice)
+  Janela 30 dias ...................... 19.996  (10.5%)
+  Janela 45 dias ...................... 23.723  (12.5%)
+  Janela 60 dias ...................... 26.319  (13.9%)
+
+ETAPA 4 — TRANSICOES DE CID (entre os pareados)
+                                            transicao     n   pct
+1              Específico → Específico, mesmo sistema 62567 33.0%
+2           Genérico → Específico (ganho diagnóstico) 37201 19.6%
+3              Específico → Específico, outro sistema 34101 18.0%
+4           Específico → Genérico (perda diagnóstica) 23407 12.3%
+5                               Mesmo CID, específico 17751  9.4%
+6 Genérico → outro genérico (causa nunca esclarecida) 10308  5.4%
+7       Mesmo CID, genérico (causa nunca esclarecida)  4274  2.3%
+
+ETAPA 5 — INTERNACOES SEM OBITO ASSOCIADO (agregado)
+  Linhas agregadas .................... 83.498
+  Internacoes representadas ........... 11.913.206
+
+QUALIDADE DE PREENCHIMENTO (entre os obitos pareados)
+  Raca/cor ausente .................... 2.2%
+  CID de entrada generico ............. 27.3%
+  CID de obito generico ............... 20.0%

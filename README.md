@@ -38,7 +38,7 @@ O projeto integra três módulos analíticos:
 
 ## 🖥️ Dashboard Interativo (Shiny)
 
-O projeto inclui o **Observatório de Saúde Infantil** (`app.R`), construído em R/Shiny com `bslib`, que reúne os três módulos na mesma navegação.
+O projeto inclui o **Observatório de Saúde Infantil** ([`app/app.R`](app/app.R)), publicado em <https://srzfap-felipe-delpino.shinyapps.io/Dash/>, construído em R/Shiny com `bslib`, que reúne os três módulos na mesma navegação.
 
 | Aba | Conteúdo |
 |---|---|
@@ -55,7 +55,7 @@ O projeto inclui o **Observatório de Saúde Infantil** (`app.R`), construído e
 
 ### Arquivos que o app carrega
 
-O `app.R` procura os insumos **no próprio diretório de execução** (`readRDS("uf_sf_simplified.rds")`, `read_excel("Tabelas_Executivas_...")`), sem caminho absoluto e sem acesso à internet.
+Todos os insumos do app já estão na pasta [`app/`](app/), ao lado do `app.R`. O `app.R` procura os insumos **no próprio diretório de execução** (`readRDS("uf_sf_simplified.rds")`, `read_excel("Tabelas_Executivas_...")`), sem caminho absoluto e sem acesso à internet.
 
 **Obrigatórios:**
 
@@ -69,18 +69,20 @@ uf_sf_simplified.rds
 
 ```text
 populacao_uf_faixa.csv       # saída de 01_baixar_populacao.R (IBGE) — libera o denominador de 1 a 6 anos
-sih_sim_linkado.rds          # saída de 00_link_sih_sim_v3.R — libera trajetória e transição de CID
+sih_sim_linkado.rds          # saída de 00_link_sih_sim_v3.R — libera trajetória e transição de CID (gerado localmente, não versionado)
 linkage_qualidade.rds        # métricas de qualidade do linkage
 sih_nao_obito_agregado.rds   # Etapa 5 agregada
+cascata_estagios.rds         # cascata de estágios da internação (linkage)
+estabelecimentos_dash.csv    # tipo de unidade, leitos e habilitações por CNES (10_cnes_sia.R)
 ```
 
 **Para executar localmente:**
 
 ```r
-# na raiz do repositório, com os insumos ao lado do app.R
+# na raiz do repositório
 install.packages(c("shiny","bslib","bsicons","readxl","dplyr","tidyr",
                    "plotly","DT","sf","ggplot2","scales","htmltools"))
-shiny::runApp("app.R")
+shiny::runApp("app")
 ```
 
 > O `app.R` faz pré-checagem de dependências e falha com a lista de pacotes ausentes, em vez de erro opaco no meio do carregamento — o que também protege o deploy no shinyapps.io.
@@ -89,20 +91,20 @@ shiny::runApp("app.R")
 
 ## 🧭 Universo SUS e linkage SIM × SIH × SINASC (02/10/2026)
 
-Script: [`Scripts/20_universo_sus_sinasc.R`](Scripts/20_universo_sus_sinasc.R) · documento: [`outputs/universo_sus/Perfil_obitos_SIM_sem_AIH_universo_SUS.pdf`](outputs/universo_sus/Perfil_obitos_SIM_sem_AIH_universo_SUS.pdf) · tabelas: [`Tabelas_universo_SUS.xlsx`](outputs/universo_sus/Tabelas_universo_SUS.xlsx) · bases: [`bases_finais/`](bases_finais/LEIAME_bases_finais.md)
+Script: [`scripts/04_universo_sus_sinasc/20_universo_sus_sinasc.R`](scripts/04_universo_sus_sinasc/20_universo_sus_sinasc.R) · documento: [`outputs/universo_sus/Perfil_obitos_SIM_sem_AIH_universo_SUS.pdf`](outputs/universo_sus/Perfil_obitos_SIM_sem_AIH_universo_SUS.pdf) · tabelas: [`Tabelas_universo_SUS.xlsx`](outputs/universo_sus/Tabelas_universo_SUS.xlsx) · bases: [`bases_finais/`](bases_finais/LEIAME_bases_finais.md)
 
 - **Universo SUS:** óbito em hospital (LOCOCOR 1) cujo CNES tem ao menos uma AIH de 0–6 anos no SIH 2015–2024. Saem UPA/PS/UBS e hospitais sem nenhuma AIH 0–6 (saúde suplementar). 314.060 óbitos (77,1% do SIM).
 - **Pareamento SIM × SIH:** 180.591 pareados (57,5%); 133.469 sem AIH (42,5%).
 - **Retroação:** todas as AIHs da criança até o óbito (internações prévias, reinternações, AIH aberta no hospital do óbito, AIH do nascimento).
 - **SIM × SINASC:** estabelecimento + características do nascimento e da mãe; 82,1% do universo pareado (91,7% dos <1 ano). Validação no dia 0: 93,9% nasceram no hospital do óbito.
 - **SINASC × SIH:** nascidos vivos 2009–2024 com internações possíveis vinculadas.
-- SINASC baixado do OpenDataSUS (S3) por [`Scripts/33_baixar_sinasc_opendatasus.R`](Scripts/33_baixar_sinasc_opendatasus.R).
+- SINASC baixado do OpenDataSUS (S3) por [`scripts/04_universo_sus_sinasc/33_baixar_sinasc_opendatasus.R`](scripts/04_universo_sus_sinasc/33_baixar_sinasc_opendatasus.R).
 
 ---
 
 ## 🔗 Linkage SIM ↔ SIH (fluxo em 5 etapas)
 
-O script [`Scripts/00_link_sih_sim_v3.R`](Scripts/00_link_sih_sim_v3.R) (versão de lógica **v3.2**) pareia óbitos e internações sem download, lendo as bases já processadas localmente. A direção do pareamento parte do SIM, e não do SIH como na v2, porque o alvo epidemiológico é o óbito hospitalar e não a internação.
+O script [`scripts/03_linkage_sim_sih/00_link_sih_sim_v3.R`](scripts/03_linkage_sim_sih/00_link_sih_sim_v3.R) (versão de lógica **v3.2**) pareia óbitos e internações sem download, lendo as bases já processadas localmente. A direção do pareamento parte do SIM, e não do SIH como na v2, porque o alvo epidemiológico é o óbito hospitalar e não a internação.
 
 | Etapa | O que faz |
 |---|---|
@@ -131,7 +133,7 @@ SAÍDAS (gravadas na pasta do dashboard)
 ```
 
 ```bash
-Rscript Scripts/00_link_sih_sim_v3.R   # sem internet; ~20–40 min para o Brasil inteiro
+Rscript scripts/03_linkage_sim_sih/00_link_sih_sim_v3.R   # sem internet; ~20–40 min para o Brasil inteiro
 ```
 
 > ⚠️ **Ajuste os caminhos antes de rodar.** O bloco `CONFIG`, no início do script, aponta para os diretórios locais de quem gerou as bases (`dir_sih`, `arq_sim`, `dir_dash`). Nenhum microdado é distribuído neste repositório, então os três caminhos precisam ser reapontados para a máquina de quem for reproduzir.
@@ -162,30 +164,72 @@ As taxas são expressas por **1.000 nascidos vivos** (até 1 ano) e por **1.000 
 
 ---
 
-## 📁 Scripts do Projeto
+## 📁 Estrutura do Repositório
 
-Os scripts de extração, tratamento, análise, linkage e geração das visualizações estão na pasta `Scripts/`.
+```text
+.
+├── app/                          # Dashboard Shiny — tudo o que o app precisa para rodar
+│   ├── app.R
+│   ├── uf_sf_simplified.rds      # malha das UFs (mapas)
+│   ├── Tabelas_Executivas_*.xlsx # tabelas do SIM e do SIH lidas pelo app
+│   ├── populacao_uf_faixa.csv    # denominador de 1 a 6 anos
+│   └── *.rds / *.csv             # agregados do linkage e do CNES usados nos painéis
+├── scripts/
+│   ├── 00_populacao/             # 01_baixar_populacao.R (IBGE)
+│   ├── 01_sim/                   # sim_01_extracao.R · sim_02_analises.R
+│   ├── 02_sih/                   # sih_01_extracao.R · sih_02_analises.R
+│   ├── 03_linkage_sim_sih/       # 00_link_sih_sim_v3.R
+│   ├── 04_universo_sus_sinasc/   # 20_universo_sus_sinasc.R · 21_relatorio · 33_baixar_sinasc
+│   └── 05_infraestrutura_cnes/   # 10_cnes_sia.R · 41_infraestrutura_cnes_sih.R
+├── bases_finais/                 # óbitos linkados e nascidos vivos com internações (csv.gz)
+├── outputs/
+│   ├── SIM/  SIH/                # figuras e tabelas executivas
+│   ├── universo_sus/             # óbitos sem AIH (documento, figuras, tabelas)
+│   └── infraestrutura/           # leitos, habilitações, níveis dos hospitais × SIH/SIM
+└── documentacao/                 # critérios de CID, dicionário revisado, relatório do linkage
+```
 
-### Pipeline — preparação das bases
+### Ordem de execução
 
-* [`Scripts/Script Insper_SIM.R`](Scripts/Script%20Insper_SIM.R)
-  Extração, organização e preparação das bases do SIM/SINASC.
-* [`Scripts/Script Insper_SIH.R`](Scripts/Script%20Insper_SIH.R)
-  Extração, organização e preparação das bases do SIH/SINASC.
+| Passo | Script | O que faz | Principais saídas |
+|---|---|---|---|
+| 0 | `scripts/00_populacao/01_baixar_populacao.R` | População residente por UF e faixa (IBGE) | `populacao_uf_faixa.csv` |
+| 1 | `scripts/01_sim/sim_01_extracao.R` | Baixa e organiza o SIM 0–6 anos | `sim_brasil_0_a_6_anos_*.rds` |
+| 2 | `scripts/02_sih/sih_01_extracao.R` | Baixa o SIH-RD em lotes por UF/ano | `Temporarios_UF_Ano/sih_{UF}_{ano}.rds` |
+| 3 | `scripts/01_sim/sim_02_analises.R` · `scripts/02_sih/sih_02_analises.R` | Tabelas executivas e figuras | `outputs/SIM`, `outputs/SIH` |
+| 4 | `scripts/03_linkage_sim_sih/00_link_sih_sim_v3.R` | Linkage SIM ↔ SIH | `sih_sim_linkado.rds`, `linkage_qualidade.rds` |
+| 5 | `scripts/04_universo_sus_sinasc/33_…` → `20_…` → `21_…` | SINASC, universo SUS e óbitos sem AIH | `bases_finais/`, `outputs/universo_sus` |
+| 6 | `scripts/05_infraestrutura_cnes/10_cnes_sia.R` | Baixa CNES (ST/LT/HB/SR) e agrega o SIH por CNES | `dados/cnes_bruto/`, `sih_por_cnes.rds`, `estabelecimentos_dash.csv` |
+| 7 | `scripts/05_infraestrutura_cnes/41_infraestrutura_cnes_sih.R` | Leitos, habilitações e nível dos hospitais × SIH × SIM | `outputs/infraestrutura` |
 
-### Pipeline — análises
+> Os scripts de extração (passos 1, 2 e 6) usam caminhos locais no bloco de configuração. Nenhum microdado bruto é distribuído aqui; reaponte os caminhos antes de rodar.
 
-* [`Scripts/Script Insper_SIM_analises.R`](Scripts/Script%20Insper_SIM_analises.R)
-  Análises epidemiológicas, tabelas executivas e figuras do módulo de mortalidade.
-* [`Scripts/Script Insper_SIH_analises.R`](Scripts/Script%20Insper_SIH_analises.R)
-  Análises epidemiológicas, tabelas executivas e figuras do módulo de internações.
+---
 
-### Pipeline — insumos do dashboard
+## 🏥 Infraestrutura hospitalar pediátrica (CNES × SIH × SIM)
 
-* [`Scripts/00_link_sih_sim_v3.R`](Scripts/00_link_sih_sim_v3.R)
-  Linkage SIM ↔ SIH em 5 etapas (v3.2). Gera `sih_sim_linkado.rds`, `linkage_qualidade.rds`, `sih_nao_obito_agregado.rds` e `relatorio_linkage_v3.txt`.
-* [`Scripts/01_baixar_populacao.R`](Scripts/01_baixar_populacao.R)
-  Download e organização da população residente por UF e faixa etária (IBGE). Gera `populacao_uf_faixa.csv`, denominador da faixa de 1 a 6 anos.
+Script: [`scripts/05_infraestrutura_cnes/41_infraestrutura_cnes_sih.R`](scripts/05_infraestrutura_cnes/41_infraestrutura_cnes_sih.R) · tabelas: [`Tabelas_infraestrutura_CNES_SIH.xlsx`](outputs/infraestrutura/Tabelas_infraestrutura_CNES_SIH.xlsx) · um hospital por linha: [`hospitais_nivel_pediatrico_2024.csv`](outputs/infraestrutura/hospitais_nivel_pediatrico_2024.csv) · números citados no texto: [`resumo_infraestrutura.txt`](outputs/infraestrutura/resumo_infraestrutura.txt)
+
+Cada hospital é classificado pela estrutura registrada no CNES (dezembro de 2015, 2019 e 2024):
+
+| Nível | Critério | Hospitais 2024 |
+|---|---|---|
+| N1 Referência de alta complexidade | UTI neonatal/pediátrica **habilitada** no SUS + cirurgia cardiovascular pediátrica, oncologia pediátrica, neurocirurgia ou gestação de alto risco tipo 2 | 356 |
+| N2 UTI habilitada | UTI neonatal/pediátrica habilitada, sem as demais | 280 |
+| N3 UTI sem habilitação SUS | Leito de UTI neo/ped cadastrado, sem habilitação | 487 |
+| N4 Só leito pediátrico | Pediatria clínica/cirúrgica ou UCI, sem UTI | 3.909 |
+| N5 Sem leito pediátrico | Tem leitos, nenhum pediátrico | 4.008 |
+
+Principais achados (2024):
+
+- **Leitos:** pediatria clínica caiu 16% desde 2015 (49,1 → 41,1 mil); UTI neonatal +19% (10,3 mil) e UTI pediátrica +63% (7,2 mil). Só ~50% dos leitos de UTI são SUS.
+- **UTI neonatal:** 4,3 leitos/mil nascidos vivos no total, mas 2,2 no SUS; 15 UFs ficam abaixo de 2/mil SUS (Portaria 930/2012).
+- **Internações:** 74% das AIH neonatais e 51% das AIH de 1–6 anos ocorrem em hospitais N1/N2; 91% dos óbitos neonatais durante a internação ocorrem neles. 282 hospitais (7%) concentram metade das AIH de 0–6 anos.
+- **Óbitos (SIM):** 15% dos óbitos neonatais ocorreram em hospital sem nenhum leito de UTI neonatal; entre 1 e 6 anos, 26% ocorreram fora do hospital.
+- **Acesso:** só 298 municípios têm hospital N1/N2. Recém-nascidos que morreram e moravam fora deles morreram fora do município de residência em 80% dos casos.
+
+| <img src="outputs/infraestrutura/Fig_infra_01_UTIN_por_UF.png" width="420"> | <img src="outputs/infraestrutura/Fig_infra_02_AIH_obitos_por_nivel.png" width="420"> |
+|---|---|
 
 ---
 
@@ -477,105 +521,33 @@ Os arquivos executivos com os resultados sumarizados das internações estão di
 
 ---
 
-# 📂 Estrutura do Repositório
-
-```text
-sim-sih-mortalidade-internacoes-0-6-anos/
-│
-├── app.R                          # Dashboard Shiny (Observatório de Saúde Infantil)
-│
-├── Tabelas_Executivas_Mortalidade_v2.xlsx        # insumos obrigatórios do app,
-├── Tabelas_Executivas_Internacoes_0_6_Anos.xlsx  #   lidos do diretório de execução
-├── uf_sf_simplified.rds                          #   (mesma pasta do app.R)
-│
-├── Scripts/
-│   ├── 00_link_sih_sim_v3.R       # Linkage SIM ↔ SIH em 5 etapas (v3.2)
-│   ├── 01_baixar_populacao.R      # População IBGE → populacao_uf_faixa.csv
-│   ├── Script Insper_SIM.R
-│   ├── Script Insper_SIM_analises.R
-│   ├── Script Insper_SIH.R
-│   └── Script Insper_SIH_analises.R
-│
-├── outputs/
-│   │
-│   ├── SIM/
-│   │   ├── Fig01_Evolucao_Faixa_Etaria_Absoluto.png
-│   │   ├── Fig01a_Evolucao_VisaoGeral_Taxa.png
-│   │   ├── Fig01a_Evolucao_VisaoGeral_Absoluto.png
-│   │   ├── Fig01b_Evolucao_Neonatal_Taxa.png
-│   │   ├── Fig01b_Evolucao_Neonatal_Absoluto.png
-│   │   ├── Fig01c_Evolucao_Criancas_Taxa.png
-│   │   ├── Fig01c_Evolucao_Criancas_Absoluto.png
-│   │   ├── Fig02_Evolucao_Causas_Taxa.png
-│   │   ├── Fig03_Causas_Prioritarias_por_Faixa.png
-│   │   ├── Fig04_Heterogeneidade_Macro_Taxa.png
-│   │   ├── Fig05_Mapa_Taxa_Estado.png
-│   │   ├── Fig06_Mapa_Taxa_Macrorregiao.png
-│   │   ├── Fig07_Fluxo_Obitos_Fora_Municipio.png
-│   │   ├── Fig08_Polos_Saude_Infantil_Top30.png
-│   │   ├── Fig09_Heatmap_Fluxo_InterUF.png
-│   │   ├── Fig10_Fluxos_Top10_Municipios_Receptores.png
-│   │   ├── Fig11_CID_Segmentado_por_Faixa_Polos.png
-│   │   ├── Fig12_Fluxo_CEP_Origem_Destino_Polos.png
-│   │   ├── Fig13_Polos_por_Especialidade.png
-│   │   ├── Tabelas_Executivas_Mortalidade_v2.xlsx
-│   │   ├── Tabelas_Top10_Municipios_Receptores.xlsx
-│   │   └── Tabelas_CID_Segmentado_e_Fluxo_CEP.xlsx
-│   │
-│   └── SIH/
-│       ├── Fig01_Evolucao_Faixa_Etaria_Absoluto.png
-│       ├── Fig01a_Evolucao_VisaoGeral_Taxa.png
-│       ├── Fig01a_Evolucao_VisaoGeral_Absoluto.png
-│       ├── Fig01b_Evolucao_Neonatal_Taxa.png
-│       ├── Fig01b_Evolucao_Neonatal_Absoluto.png
-│       ├── Fig01c_Evolucao_Criancas_Taxa.png
-│       ├── Fig01c_Evolucao_Criancas_Absoluto.png
-│       ├── Fig02_Evolucao_Causas_Taxa.png
-│       ├── Fig03_Causas_Prioritarias_por_Faixa.png
-│       ├── Fig04_Heterogeneidade_Macro_Taxa.png
-│       ├── Fig05_Mapa_Taxa_Estado.png
-│       ├── Fig06_Mapa_Taxa_Macrorregiao.png
-│       ├── Fig07_Fluxo_Internacoes_Fora_Municipio.png
-│       ├── Fig08_Polos_Saude_Infantil_Top30.png
-│       ├── Fig09_Heatmap_Fluxo_InterUF.png
-│       ├── Fig10_Fluxos_Top10_Municipios_Receptores_SIH.png
-│       ├── Fig11_Obitos_Hospitalares_SIH.png
-│       ├── Fig12_CID_Segmentado_por_Faixa_Polos_SIH.png
-│       ├── Fig13_Polos_por_Especialidade_SIH.png
-│       ├── Fig14_Fluxo_CEP_Origem_Destino_Polos_SIH.png
-│       ├── Tabelas_Executivas_Internacoes_0_6_Anos.xlsx
-│       ├── Tabelas_Top10_Municipios_Receptores_SIH.xlsx
-│       └── Tabelas_CID_Segmentado_e_Fluxo_CEP_SIH.xlsx
-│
-├── .gitignore
-├── LICENSE
-└── README.md
-```
-
-> **Nota.** Os arquivos `sih_sim_linkado.rds`, `linkage_qualidade.rds`, `sih_nao_obito_agregado.rds` e `populacao_uf_faixa.csv` são gerados localmente pelos scripts `00_` e `01_` e não são versionados, seja pelo volume, seja por conterem microdado individualizado no caso do linkage. Sem eles o app abre normalmente, com os painéis dependentes sinalizando o insumo ausente.
-
----
-
 # 💻 Reprodutibilidade
 
-A ordem de execução importa: as bases do SIM e do SIH precisam existir antes do linkage, e o linkage precisa rodar antes de os painéis de trajetória ficarem disponíveis no dashboard.
+A estrutura de pastas e a ordem de execução estão na seção [Estrutura do Repositório](#-estrutura-do-repositório). Em resumo:
 
 ```r
 # 1. Preparação das bases
-source("Scripts/Script Insper_SIM.R")
-source("Scripts/Script Insper_SIH.R")
+source("scripts/00_populacao/01_baixar_populacao.R")      # denominador de 1 a 6 anos (IBGE)
+source("scripts/01_sim/sim_01_extracao.R")
+source("scripts/02_sih/sih_01_extracao.R")
 
 # 2. Análises descritivas, tabelas executivas e figuras
-source("Scripts/Script Insper_SIM_analises.R")
-source("Scripts/Script Insper_SIH_analises.R")
+source("scripts/01_sim/sim_02_analises.R")
+source("scripts/02_sih/sih_02_analises.R")
 
-# 3. Insumos do dashboard
-source("Scripts/01_baixar_populacao.R")     # denominador de 1 a 6 anos (IBGE)
-source("Scripts/00_link_sih_sim_v3.R")      # linkage SIM ↔ SIH (~20–40 min)
+# 3. Linkage, universo SUS e infraestrutura
+source("scripts/03_linkage_sim_sih/00_link_sih_sim_v3.R")  # ~20–40 min
+source("scripts/04_universo_sus_sinasc/33_baixar_sinasc_opendatasus.R")
+source("scripts/04_universo_sus_sinasc/20_universo_sus_sinasc.R")
+source("scripts/04_universo_sus_sinasc/21_relatorio_universo_sus.R")
+source("scripts/05_infraestrutura_cnes/10_cnes_sia.R")      # RODAR <- c(0, 1) e depois 2
+source("scripts/05_infraestrutura_cnes/41_infraestrutura_cnes_sih.R")
 
 # 4. Dashboard interativo
-shiny::runApp("app.R")
+shiny::runApp("app")
 ```
+
+> **Nota.** `sih_sim_linkado.rds` (saída do linkage, com um registro por internação) é gerado localmente e não é versionado. Sem ele o app abre normalmente; os painéis de trajetória sinalizam o insumo ausente. Os demais insumos do app, todos agregados ou de cadastro público, estão em `app/`.
 
 ---
 

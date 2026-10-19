@@ -47,3 +47,7 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+# Linkage individualizado (gerado localmente por 00_link_sih_sim_v3.R; não versionar)
+app/sih_sim_linkado.rds
+sih_sim_linkado.rds
